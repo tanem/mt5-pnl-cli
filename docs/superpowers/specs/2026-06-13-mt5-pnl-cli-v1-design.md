@@ -118,9 +118,10 @@ now happens entirely at query time from raw `closed_deals`:
   `cash_flows`), so every record in `closed_deals` is aggregated. The old
   CLI's entry/type filter existed only because its fixture source didn't
   pre-filter. (Side note recorded during design: the exporter's
-  `DEAL_ENTRY_INOUT = 3` looks like it may actually be `DEAL_ENTRY_OUT_BY`
-  in the official MT5 enum, with true reversals at 2 — to be verified and,
-  if confirmed, fixed in the exporter, not compensated for here.)
+  `DEAL_ENTRY_INOUT = 3` was confirmed to be mislabelled `DEAL_ENTRY_OUT_BY`,
+  dropping reversal deals — fixed in the exporter via
+  https://github.com/tanem/mt5-pnl-exporter/pull/19, not compensated for
+  here.)
 - Net per deal = `profit + swap + commission + fee`; running sums rounded
   to 2 dp as in the Python implementation.
 - Bucket by account + period: day (`YYYY-MM-DD`, UTC), week
