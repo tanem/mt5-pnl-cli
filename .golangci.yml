@@ -10,3 +10,8 @@ linters:
         - fmt.Fprint
         - fmt.Fprintf
         - fmt.Fprintln
+        # Deferred closes on the read-only snapshot path: a Close error
+        # cannot lose data we have already decoded, and truncation surfaces
+        # through the JSON decoder.
+        - (*os.File).Close
+        - (*compress/gzip.Reader).Close
