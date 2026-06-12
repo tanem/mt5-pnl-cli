@@ -68,11 +68,6 @@ func resolveAccounts(spec string, accounts []snapshot.AccountSnapshot) (map[int6
 	return out, nil
 }
 
-func cmdSetPassphrase(stderr io.Writer) int {
-	fmt.Fprintln(stderr, "error: not implemented yet")
-	return 1
-}
-
 func loadSnapshot(pathFlag string, staleAfter time.Duration, stderr io.Writer, getPassphrase func() (string, error)) (*snapshot.Snapshot, error) {
 	path, err := resolveSnapshotPath(pathFlag, os.Getenv)
 	if err != nil {
