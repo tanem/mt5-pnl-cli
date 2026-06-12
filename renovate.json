@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "packageRules": [
+    {
+      "description": "Auto-merge digest, minor and patch updates once CI passes",
+      "matchUpdateTypes": ["digest", "minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Major updates always open a PR for review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ]
+}
