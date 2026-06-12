@@ -1,0 +1,12 @@
+# golangci-lint v2 config. Default linters, with one exclusion: fmt.Fprint*
+# writes to stderr and in-memory tabwriters are diagnostics whose errors are
+# not actionable; the meaningful error paths (tabwriter Flush, the final
+# summary write in render) return errors and are checked.
+version: "2"
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
