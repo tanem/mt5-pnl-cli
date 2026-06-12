@@ -6,9 +6,14 @@
 package snapshot
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+
+	"filippo.io/age"
 )
 
 // Supported schema version: accept the same major and any minor <= SupportedMinor.
@@ -107,4 +112,37 @@ func CheckSchemaVersion(v string) error {
 		return unsupported()
 	}
 	return nil
+}
+
+// Read opens, decrypts (age scrypt), decompresses and parses a snapshot,
+// then enforces the schema version gate. The pipeline is fully streaming.
+func Read(path, passphrase string) (*Snapshot, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	id, err := age.NewScryptIdentity(passphrase)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := age.Decrypt(f, id)
+	if err != nil {
+		return nil, fmt.Errorf("decrypting %s: wrong passphrase, or the file is corrupt (%v)", path, err)
+	}
+	gz, err := gzip.NewReader(dec)
+	if err != nil {
+		return nil, fmt.Errorf("decompressing %s: %v", path, err)
+	}
+	defer gz.Close()
+
+	var snap Snapshot
+	if err := json.NewDecoder(gz).Decode(&snap); err != nil {
+		return nil, fmt.Errorf("parsing %s: %v", path, err)
+	}
+	if err := CheckSchemaVersion(snap.SchemaVersion); err != nil {
+		return nil, err
+	}
+	return &snap, nil
 }
