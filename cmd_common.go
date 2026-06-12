@@ -40,7 +40,7 @@ func warnIfStale(w io.Writer, generatedAt string, threshold time.Duration, now t
 		fmt.Fprintln(w, "warning: could not parse snapshot timestamp; staleness unknown")
 		return
 	}
-	if age := now.Sub(ts); age > threshold {
+	if age := now.Sub(ts).Abs(); age > threshold {
 		fmt.Fprintf(w, "warning: snapshot is %.1fh old (threshold %s); run 'mt5-pnl-exporter export' on the host\n",
 			age.Hours(), threshold)
 	}
@@ -66,6 +66,11 @@ func resolveAccounts(spec string, accounts []snapshot.AccountSnapshot) (map[int6
 		out[login] = true
 	}
 	return out, nil
+}
+
+func cmdSetPassphrase(stderr io.Writer) int {
+	fmt.Fprintln(stderr, "error: not implemented yet")
+	return 1
 }
 
 func loadSnapshot(pathFlag string, staleAfter time.Duration, stderr io.Writer, getPassphrase func() (string, error)) (*snapshot.Snapshot, error) {
