@@ -1,0 +1,432 @@
+{
+  "$defs": {
+    "AccountSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "login": {
+          "title": "Login",
+          "type": "integer"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "currency": {
+          "title": "Currency",
+          "type": "string"
+        },
+        "balance": {
+          "title": "Balance",
+          "type": "number"
+        },
+        "equity": {
+          "title": "Equity",
+          "type": "number"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Success At"
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Error"
+        }
+      },
+      "required": [
+        "login",
+        "label",
+        "currency",
+        "balance",
+        "equity",
+        "last_success_at",
+        "last_error"
+      ],
+      "title": "AccountSnapshot",
+      "type": "object"
+    },
+    "CashFlow": {
+      "additionalProperties": false,
+      "description": "One balance-family deal (deposit/withdrawal/credit/charge/correction/bonus/commission).\n\nSame shape as ClosedDeal \u2014 these ARE deals, distinguished only by `type`.\nFields that don't apply to balance records (volume, price, symbol, entry,\nposition_id) come through as 0 / empty string from MT5.",
+      "properties": {
+        "account": {
+          "title": "Account",
+          "type": "integer"
+        },
+        "ticket": {
+          "title": "Ticket",
+          "type": "integer"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "position_id": {
+          "title": "Position Id",
+          "type": "integer"
+        },
+        "time": {
+          "title": "Time",
+          "type": "integer"
+        },
+        "time_msc": {
+          "title": "Time Msc",
+          "type": "integer"
+        },
+        "type": {
+          "title": "Type",
+          "type": "integer"
+        },
+        "entry": {
+          "title": "Entry",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "integer"
+        },
+        "magic": {
+          "title": "Magic",
+          "type": "integer"
+        },
+        "volume": {
+          "title": "Volume",
+          "type": "number"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "profit": {
+          "title": "Profit",
+          "type": "number"
+        },
+        "swap": {
+          "title": "Swap",
+          "type": "number"
+        },
+        "commission": {
+          "title": "Commission",
+          "type": "number"
+        },
+        "fee": {
+          "title": "Fee",
+          "type": "number"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        },
+        "external_id": {
+          "title": "External Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "ticket",
+        "order",
+        "position_id",
+        "time",
+        "time_msc",
+        "type",
+        "entry",
+        "reason",
+        "magic",
+        "volume",
+        "price",
+        "profit",
+        "swap",
+        "commission",
+        "fee",
+        "symbol",
+        "comment",
+        "external_id"
+      ],
+      "title": "CashFlow",
+      "type": "object"
+    },
+    "ClosedDeal": {
+      "additionalProperties": false,
+      "description": "One closing trade deal \u2014 every field MT5's TradeDeal emits, plus `account`.",
+      "properties": {
+        "account": {
+          "title": "Account",
+          "type": "integer"
+        },
+        "ticket": {
+          "title": "Ticket",
+          "type": "integer"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "position_id": {
+          "title": "Position Id",
+          "type": "integer"
+        },
+        "time": {
+          "title": "Time",
+          "type": "integer"
+        },
+        "time_msc": {
+          "title": "Time Msc",
+          "type": "integer"
+        },
+        "type": {
+          "title": "Type",
+          "type": "integer"
+        },
+        "entry": {
+          "title": "Entry",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "integer"
+        },
+        "magic": {
+          "title": "Magic",
+          "type": "integer"
+        },
+        "volume": {
+          "title": "Volume",
+          "type": "number"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "profit": {
+          "title": "Profit",
+          "type": "number"
+        },
+        "swap": {
+          "title": "Swap",
+          "type": "number"
+        },
+        "commission": {
+          "title": "Commission",
+          "type": "number"
+        },
+        "fee": {
+          "title": "Fee",
+          "type": "number"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        },
+        "external_id": {
+          "title": "External Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "ticket",
+        "order",
+        "position_id",
+        "time",
+        "time_msc",
+        "type",
+        "entry",
+        "reason",
+        "magic",
+        "volume",
+        "price",
+        "profit",
+        "swap",
+        "commission",
+        "fee",
+        "symbol",
+        "comment",
+        "external_id"
+      ],
+      "title": "ClosedDeal",
+      "type": "object"
+    },
+    "OpenPosition": {
+      "additionalProperties": false,
+      "description": "One currently-open position \u2014 every field MT5's TradePosition emits, plus `account`.",
+      "properties": {
+        "account": {
+          "title": "Account",
+          "type": "integer"
+        },
+        "ticket": {
+          "title": "Ticket",
+          "type": "integer"
+        },
+        "identifier": {
+          "title": "Identifier",
+          "type": "integer"
+        },
+        "time": {
+          "title": "Time",
+          "type": "integer"
+        },
+        "time_msc": {
+          "title": "Time Msc",
+          "type": "integer"
+        },
+        "time_update": {
+          "title": "Time Update",
+          "type": "integer"
+        },
+        "time_update_msc": {
+          "title": "Time Update Msc",
+          "type": "integer"
+        },
+        "type": {
+          "title": "Type",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "integer"
+        },
+        "magic": {
+          "title": "Magic",
+          "type": "integer"
+        },
+        "volume": {
+          "title": "Volume",
+          "type": "number"
+        },
+        "price_open": {
+          "title": "Price Open",
+          "type": "number"
+        },
+        "price_current": {
+          "title": "Price Current",
+          "type": "number"
+        },
+        "sl": {
+          "title": "Sl",
+          "type": "number"
+        },
+        "tp": {
+          "title": "Tp",
+          "type": "number"
+        },
+        "profit": {
+          "title": "Profit",
+          "type": "number"
+        },
+        "swap": {
+          "title": "Swap",
+          "type": "number"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        },
+        "external_id": {
+          "title": "External Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "ticket",
+        "identifier",
+        "time",
+        "time_msc",
+        "time_update",
+        "time_update_msc",
+        "type",
+        "reason",
+        "magic",
+        "volume",
+        "price_open",
+        "price_current",
+        "sl",
+        "tp",
+        "profit",
+        "swap",
+        "symbol",
+        "comment",
+        "external_id"
+      ],
+      "title": "OpenPosition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+    },
+    "accounts": {
+      "items": {
+        "$ref": "#/$defs/AccountSnapshot"
+      },
+      "title": "Accounts",
+      "type": "array"
+    },
+    "closed_deals": {
+      "items": {
+        "$ref": "#/$defs/ClosedDeal"
+      },
+      "title": "Closed Deals",
+      "type": "array"
+    },
+    "open_positions": {
+      "items": {
+        "$ref": "#/$defs/OpenPosition"
+      },
+      "title": "Open Positions",
+      "type": "array"
+    },
+    "cash_flows": {
+      "items": {
+        "$ref": "#/$defs/CashFlow"
+      },
+      "title": "Cash Flows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "accounts",
+    "closed_deals",
+    "open_positions",
+    "cash_flows"
+  ],
+  "title": "Snapshot",
+  "type": "object"
+}
