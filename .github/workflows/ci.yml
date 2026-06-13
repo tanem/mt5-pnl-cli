@@ -35,7 +35,9 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: stable
-      - run: go test -race -coverprofile=coverage.out ./...
+      - name: Test with coverage
+        run: go test -race -coverprofile=coverage.out ./...
+        shell: bash # uniform arg parsing; Windows pwsh mangles -coverprofile into a phantom ".out" package
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
