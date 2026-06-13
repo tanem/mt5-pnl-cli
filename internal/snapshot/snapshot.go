@@ -27,8 +27,12 @@ type Snapshot struct {
 	GeneratedAt   string            `json:"generated_at"`
 	Accounts      []AccountSnapshot `json:"accounts"`
 	ClosedDeals   []Deal            `json:"closed_deals"`
-	OpenPositions []OpenPosition    `json:"open_positions"`
-	CashFlows     []Deal            `json:"cash_flows"`
+	// OpenPositions and CashFlows are decoded for schema fidelity with the
+	// exporter, but intentionally not surfaced: cash flows (deposits and
+	// withdrawals) are deliberately excluded from trading P&L, and open
+	// positions are reserved for a future command.
+	OpenPositions []OpenPosition `json:"open_positions"`
+	CashFlows     []Deal         `json:"cash_flows"`
 }
 
 type AccountSnapshot struct {

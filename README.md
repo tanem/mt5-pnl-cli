@@ -140,7 +140,11 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
 - `pnl` — P&L over a date range.
   - Range: `--last Nd|Nw|Nm|Ny` (default `30d`; months and years are
     calendar-accurate) or `--from YYYY-MM-DD [--to YYYY-MM-DD]` (`--to`
-    defaults to today).
+    defaults to today). `--last` runs from N units ago through today
+    inclusive, so `30d` covers 31 calendar days. Dates, `--last` and
+    "today" are all interpreted in **UTC**, and each deal is bucketed by
+    its UTC day — so from a far-offset timezone like NZ, the UTC day can
+    differ from your local day near midnight.
   - `--by day|week|month` (default `week`; weeks start Monday, dates are
     UTC).
   - `--accounts "Trend EA,Scalper EA"` filters by account label
@@ -171,6 +175,16 @@ P&L = `profit + swap + commission + fee`. A deal with net > 0 is a win,
 net < 0 a loss; a breakeven deal counts toward trades but neither
 bucket. Sums accumulate at full precision and round only for display.
 Profit factor = gross profit / |gross loss|.
+
+**What counts as a trade is decided upstream.** This CLI sums every deal
+in the snapshot's `closed_deals` and trusts
+[mt5-pnl-exporter](https://github.com/tanem/mt5-pnl-exporter) to have
+emitted only closing deals — entry legs and cash flows (deposits,
+withdrawals) are filtered out there, not here — using MT5's native
+signs, where commission, swap and fees are already negative for costs.
+The CLI does not re-check this, so if you change that filtering or those
+signs in the exporter, the P&L here changes with no error. Keep the two
+in step.
 
 ## Schema compatibility
 

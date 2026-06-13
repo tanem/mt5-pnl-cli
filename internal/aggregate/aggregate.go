@@ -8,7 +8,7 @@ package aggregate
 
 import (
 	"math"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/tanem/mt5-pnl-cli/internal/snapshot"
@@ -87,12 +87,12 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 	for p := range periodSet {
 		periods = append(periods, p)
 	}
-	sort.Strings(periods)
+	slices.Sort(periods)
 	accounts := make([]int64, 0, len(accountSet))
 	for a := range accountSet {
 		accounts = append(accounts, a)
 	}
-	sort.Slice(accounts, func(i, j int) bool { return accounts[i] < accounts[j] })
+	slices.Sort(accounts)
 
 	var rows []Row
 	var sum Summary
