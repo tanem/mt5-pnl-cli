@@ -7,10 +7,12 @@ tables or JSON. Spec: `docs/superpowers/specs/2026-06-13-mt5-pnl-cli-v1-design.m
 ## Commands
 
 ```bash
-go test ./...                 # all tests (race-enabled in CI)
+go test ./...                 # all tests (CI runs -race; ubuntu leg uploads coverage to codecov)
 go test ./internal/render -update   # regenerate golden files after render changes
 go build -o mt5-pnl-cli .
 go run github.com/goreleaser/goreleaser/v2@latest check   # validate .goreleaser.yaml
+pre-commit install            # gitleaks secret-scan hook (one-time)
+pre-commit run --all-files    # run the gitleaks hook manually
 ```
 
 ## Architecture
