@@ -24,8 +24,11 @@ func TestBinarySmoke(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), "mt5-pnl-cli dev (schema 1.0)") {
-		t.Errorf("version output: %q", out)
+	// The version token varies by build context (the GoReleaser ldflag, the
+	// module version for `go install`, or "dev"/a VCS stamp for a local build),
+	// so assert the stable surrounding format rather than a literal version.
+	if got := string(out); !strings.HasPrefix(got, "mt5-pnl-cli ") || !strings.Contains(got, "(schema 1.0)") {
+		t.Errorf("version output: %q", got)
 	}
 
 	// pnl with no --snapshot and no env var fails before touching the keychain.
