@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -64,6 +66,7 @@ func TestResolveRange(t *testing.T) {
 		{"", "", "2026-03-31"},           // --to without --from
 		{"", "2026-03-31", "2026-01-01"}, // to before from
 		{"", "not-a-date", ""},
+		{"", "2026-01-01", "not-a-date"}, // valid --from, invalid --to
 	} {
 		if _, _, err := resolveRange(c[0], c[1], c[2], now); err == nil {
 			t.Errorf("resolveRange(%q,%q,%q): want error", c[0], c[1], c[2])
@@ -119,5 +122,29 @@ func TestResolveAccounts(t *testing.T) {
 	_, err = resolveAccounts("Nope", accts)
 	if err == nil || !strings.Contains(err.Error(), "Trend EA") {
 		t.Errorf("unknown label error should list valid labels: %v", err)
+	}
+}
+
+func TestExpandTilde(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("no home dir on this platform: %v", err)
+	}
+	cases := []struct{ in, want string }{
+		{"~", home},
+		{"~/snap.age", filepath.Join(home, "snap.age")},
+		{"~/a/b", filepath.Join(home, "a", "b")},
+		{"/abs/path", "/abs/path"}, // no leading ~, returned unchanged
+		{"relative", "relative"},
+	}
+	for _, c := range cases {
+		got, err := expandTilde(c.in)
+		if err != nil {
+			t.Errorf("expandTilde(%q): %v", c.in, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("expandTilde(%q) = %q, want %q", c.in, got, c.want)
+		}
 	}
 }

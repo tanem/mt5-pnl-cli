@@ -20,6 +20,8 @@ func TestCheckSchemaVersion(t *testing.T) {
 		{"2.0", "unsupported"},
 		{"garbage", "unsupported"},
 		{"1", "unsupported"},
+		{"x.0", "unsupported"}, // non-numeric major
+		{"1.x", "unsupported"}, // non-numeric minor
 		{"", "unsupported"},
 	}
 	for _, c := range cases {
@@ -104,5 +106,23 @@ func TestReadRefusesUnsupportedSchema(t *testing.T) {
 	_, err := snapshot.Read(path, "test-pass")
 	if err == nil || !strings.Contains(err.Error(), "unsupported snapshot schema") {
 		t.Fatalf("err = %v, want unsupported-schema message", err)
+	}
+}
+
+func TestReadCorruptGzip(t *testing.T) {
+	// Valid age, but the plaintext is not gzip data.
+	path := snaptest.WriteAge(t, []byte("not gzip data"), "test-pass")
+	_, err := snapshot.Read(path, "test-pass")
+	if err == nil || !strings.Contains(err.Error(), "decompressing") {
+		t.Fatalf("err = %v, want decompressing error", err)
+	}
+}
+
+func TestReadCorruptJSON(t *testing.T) {
+	// Valid age and valid gzip, but the decompressed bytes are not JSON.
+	path := snaptest.WriteGzip(t, []byte("not json"), "test-pass")
+	_, err := snapshot.Read(path, "test-pass")
+	if err == nil || !strings.Contains(err.Error(), "parsing") {
+		t.Fatalf("err = %v, want parsing error", err)
 	}
 }
