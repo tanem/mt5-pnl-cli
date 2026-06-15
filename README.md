@@ -145,6 +145,11 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
     "today" are all interpreted in **UTC**, and each deal is bucketed by
     its UTC day — so from a far-offset timezone like NZ, the UTC day can
     differ from your local day near midnight.
+  - **Deal times and broker months.** Each deal's `time` is the value MT5
+    records — on most brokers the server's local clock stored as a Unix
+    timestamp. The CLI buckets by the UTC day/week/month of that value, so
+    monthly and weekly figures line up with what your broker statement
+    shows; there is no timezone skew to correct for.
   - `--by day|week|month` (default `week`; weeks start Monday, dates are
     UTC).
   - `--accounts "Trend EA,Scalper EA"` filters by account label
