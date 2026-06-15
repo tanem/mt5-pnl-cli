@@ -62,7 +62,7 @@ pre-commit run --all-files    # run the gitleaks hook manually
 
 ## Conventions
 
-- NZ English in comments and docs. No hyperbole.
+- British/Commonwealth English in comments and docs. No hyperbole.
 - TDD; golden files for table output (`-update` to regenerate, then eyeball
   the diff).
 - After changing commands, architecture or a gotcha above, update this

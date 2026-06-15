@@ -401,3 +401,62 @@ func TestAccountsFormatJSONConflict(t *testing.T) {
 		t.Errorf("exit %d, stderr %q", code, errOut)
 	}
 }
+
+func TestAccountsJSONCommand(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass",
+		"accounts", "--snapshot", path, "--json", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	var accts []map[string]any
+	if err := json.Unmarshal([]byte(out), &accts); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+	if len(accts) != 2 {
+		t.Fatalf("got %d accounts, want 2:\n%s", len(accts), out)
+	}
+	if !strings.Contains(out, "Trend EA") {
+		t.Errorf("JSON missing account label:\n%s", out)
+	}
+}
+
+func TestPnLFlagParseError(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--nope")
+	if code != 1 || errOut == "" {
+		t.Errorf("exit %d, stderr %q; want 1 + flag error", code, errOut)
+	}
+}
+
+func TestAccountsFlagParseError(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "accounts", "--nope")
+	if code != 1 || errOut == "" {
+		t.Errorf("exit %d, stderr %q; want 1 + flag error", code, errOut)
+	}
+}
+
+func TestPnLInvalidRange(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--from", "not-a-date")
+	if code != 1 || !strings.Contains(errOut, "--from") {
+		t.Errorf("exit %d, stderr %q; want 1 + --from guidance", code, errOut)
+	}
+}
+
+func TestSetPassphraseRequiresTerminal(t *testing.T) {
+	// CI and other non-interactive runs provide a non-TTY stdin, so the
+	// interactive guard fires before any keychain access (which CI cannot
+	// reach anyway). cmdSetPassphrase reads os.Stdin directly, so stdin
+	// cannot be injected via runCLI; a rare interactive local run where
+	// stdin is a TTY would block this test on password input.
+	_, errOut, code := runCLI(t, "", "set-passphrase")
+	if code != 1 || !strings.Contains(errOut, "interactive terminal") {
+		t.Errorf("exit %d, stderr %q; want 1 + terminal guard", code, errOut)
+	}
+}
+
+func TestHelpCommand(t *testing.T) {
+	out, errOut, code := runCLI(t, "", "--help")
+	if code != 0 || !strings.Contains(out, "Usage") || errOut != "" {
+		t.Errorf("exit %d, stdout %q, stderr %q; want 0 + usage on stdout, empty stderr", code, out, errOut)
+	}
+}

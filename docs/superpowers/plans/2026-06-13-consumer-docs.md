@@ -8,7 +8,7 @@
 
 **Tech Stack:** Markdown; GitHub Actions; codecov-action v5; pre-commit + gitleaks.
 
-**Conventions:** Working directory is `~/Code/mt5-pnl-cli`, branch `docs/consumer-docs`. NZ English. `CODECOV_TOKEN` is already set in repo secrets; Renovate covers the repo (maintainer confirmed both).
+**Conventions:** Working directory is `<repo-root>`, branch `docs/consumer-docs`. British/Commonwealth English. `CODECOV_TOKEN` is already set in repo secrets; Renovate covers the repo (maintainer confirmed both).
 
 ---
 
@@ -254,7 +254,7 @@ go install github.com/tanem/mt5-pnl-cli@latest
 mt5-pnl-cli set-passphrase
 
 # once: tell the CLI where the synced snapshot lives
-export MT5_PNL_SNAPSHOT=~/Dropbox/mt5/snapshot.json.gz.age
+export MT5_PNL_SNAPSHOT=~/snapshots/mt5.json.gz.age
 
 mt5-pnl-cli pnl          # last 30 days, grouped by week
 mt5-pnl-cli accounts     # balances, equity, freshness
@@ -520,7 +520,7 @@ The binary's `version` output is injected from the tag via ldflags.
 ## Conventions
 
 See [`CLAUDE.md`](CLAUDE.md) — the canonical reference for coding style,
-architectural rules, and gotchas (NZ English, the no-config-file and
+architectural rules, and gotchas (British/Commonwealth English, the no-config-file and
 keychain-only invariants, golden-file workflow, doc-sync rule). It's
 loaded automatically by Claude Code but reads as a normal project doc.
 ````

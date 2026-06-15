@@ -120,7 +120,7 @@ Exporter skeleton, Go content:
   Explicitly note this is simpler than the exporter's flow: no package
   index, no OIDC, no manual approval gate; the tag is the trigger and
   the GitHub Release is the artefact.
-- **Conventions**: pointer to CLAUDE.md as canonical (NZ English, TDD,
+- **Conventions**: pointer to CLAUDE.md as canonical (British/Commonwealth English, TDD,
   doc-sync rule, no-config-file and keychain-only invariants).
 
 ## SECURITY.md design
