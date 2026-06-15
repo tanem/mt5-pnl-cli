@@ -208,6 +208,13 @@ func TestVersionCommand(t *testing.T) {
 	}
 }
 
+func TestVersionFlag(t *testing.T) {
+	out, _, code := runCLI(t, "", "--version")
+	if code != 0 || !strings.Contains(out, "mt5-pnl-cli") || !strings.Contains(out, "schema 1.0") {
+		t.Errorf("exit %d, out %q", code, out)
+	}
+}
+
 func TestUnknownCommand(t *testing.T) {
 	_, errOut, code := runCLI(t, "", "bogus")
 	if code != 1 || !strings.Contains(errOut, "Usage") {

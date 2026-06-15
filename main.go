@@ -29,7 +29,7 @@ func run(args []string, stdout, stderr io.Writer, getPassphrase func() (string, 
 		return cmdAccounts(args[1:], stdout, stderr, getPassphrase)
 	case "set-passphrase":
 		return cmdSetPassphrase(stderr)
-	case "version":
+	case "version", "--version":
 		fmt.Fprintf(stdout, "mt5-pnl-cli %s (schema %d.%d)\n", version, snapshot.SupportedMajor, snapshot.SupportedMinor)
 		return 0
 	case "help", "-h", "--help":

@@ -28,6 +28,14 @@ func TestBinarySmoke(t *testing.T) {
 		t.Errorf("version output: %q", out)
 	}
 
+	out, err = exec.Command(bin, "--version").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "mt5-pnl-cli dev (schema 1.0)") {
+		t.Errorf("--version output: %q", out)
+	}
+
 	// pnl with no --snapshot and no env var fails before touching the keychain.
 	cmd := exec.Command(bin, "pnl")
 	cmd.Env = envWithout("MT5_PNL_SNAPSHOT")
