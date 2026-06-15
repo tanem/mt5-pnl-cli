@@ -86,6 +86,26 @@ func loadSnapshot(pathFlag string, staleAfter time.Duration, stderr io.Writer, g
 	return snap, nil
 }
 
+// resolveFormat reconciles --format with the legacy --json alias. format is
+// the --format value; formatSet/jsonSet report whether each flag was given;
+// jsonVal is the --json bool. --json is treated as --format json; if both are
+// set and disagree it is an error.
+func resolveFormat(format string, formatSet, jsonSet, jsonVal bool) (string, error) {
+	f := format
+	if jsonSet && jsonVal {
+		if formatSet && f != "json" {
+			return "", fmt.Errorf("--json conflicts with --format %s; use one or the other", f)
+		}
+		f = "json"
+	}
+	switch f {
+	case "table", "json", "csv":
+		return f, nil
+	default:
+		return "", fmt.Errorf("invalid --format %q: use table, json or csv", f)
+	}
+}
+
 // parseFlags parses fs, separating the two failure modes flag conflates:
 // -h/--help prints the hand-written help to stdout and signals a clean exit
 // (ok=false, code 0); any other parse error has already been written to fs's
