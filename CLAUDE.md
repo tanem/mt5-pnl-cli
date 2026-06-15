@@ -30,7 +30,9 @@ pre-commit run --all-files    # run the gitleaks hook manually
   win nor loss.
 - `internal/secrets` — keychain via zalando/go-keyring, service
   `mt5-pnl-cli`, account `encryption-passphrase`.
-- `internal/render` — tabwriter tables + JSON; all display rounding here.
+- `internal/render` — tabwriter tables, JSON and CSV; all display
+  rounding here. `pnl`/`accounts` take `--format table|json|csv`
+  (default `table`); `--json` is a documented alias.
 - `internal/snaptest` — test-only fixture builder (encrypts JSON the way
   the exporter does; low scrypt work factor for speed).
 
@@ -48,6 +50,13 @@ pre-commit run --all-files    # run the gitleaks hook manually
   `SupportedMinor`, re-vendor `schema/snapshot.schema.json` from that
   release, and add fields to the structs (additive only).
 - **Deal times are Unix seconds bucketed in UTC**; weeks start Monday.
+- **`--format` and the `--json` alias.** `pnl`/`accounts` take
+  `--format table|json|csv`; `--json` is kept as a documented alias.
+  Passing both `--json` and `--format <non-json>` is an error. CSV is
+  rows-only (no summary).
+- **Mixed-currency guard.** `pnl` never sums across currencies: when
+  accounts in scope span more than one, combined `ALL` rows and the
+  summary are suppressed (`n/a`/`null`/omitted) with a stderr warning.
 - Dependencies are Renovate-managed; don't hand-bump pinned actions or
   module versions.
 

@@ -39,10 +39,11 @@ agents.
   dashboard. The snapshot is yours; this binary reads it locally.
 - **One file in, answers out.** No config file. Point it at the snapshot
   once (env var or flag) and `mt5-pnl-cli pnl` just works.
-- **Agent- and script-friendly.** `--json` emits stable machine-readable
-  output, and warnings go to stderr so they never corrupt a pipeline. An
-  agent like Claude Code can turn *"show me monthly P&L for Q1"* into
-  `mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month --json`.
+- **Agent- and script-friendly.** `--format json` (or the alias `--json`)
+  emits stable machine-readable output, and warnings go to stderr so they
+  never corrupt a pipeline. An agent like Claude Code can turn *"show me
+  monthly P&L for Q1"* into
+  `mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month --format json`.
 - **Secrets stay in the keychain.** The decryption passphrase lives in
   the OS keychain only — there is deliberately no env var or flag for it.
 
@@ -96,11 +97,11 @@ LOGIN  LABEL       CURRENCY  BALANCE  EQUITY   LAST SUCCESS          LAST ERROR
 Snapshot generated: 2026-06-13T00:00:00Z
 ```
 
-`--json` emits the same data for machines (`"account": null` is the
-combined row):
+`--format json` (or the alias `--json`) emits the same data for machines
+(`"account": null` is the combined row):
 
 ```
-$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --json
+$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --format json
 {
   "rows": [
     {
@@ -135,6 +136,15 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
 }
 ```
 
+`--format csv` emits header + rows for spreadsheets (no summary):
+
+```
+$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --format csv
+period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_loss
+2026-01-01,111,Trend EA,10.00,3,2,1,14.00,-4.00
+2026-01-01,,ALL,10.00,3,2,1,14.00,-4.00
+```
+
 ## Commands
 
 - `pnl` — P&L over a date range.
@@ -154,18 +164,28 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
     UTC).
   - `--accounts "Trend EA,Scalper EA"` filters by account label
     (case-insensitive; default all).
-  - `--json` for machine output.
+  - `--format table|json|csv` (default `table`). `--json` is a documented
+    alias for `--format json`. CSV is header + rows only (no summary
+    block) — the spreadsheet/import path.
+  - **Mixed currencies.** If the accounts in scope span more than one
+    currency, combined `ALL` rows and the summary are suppressed (`n/a` in
+    tables, `null` in JSON, omitted from CSV) and a warning goes to
+    stderr — the tool never silently sums across currencies. Narrow
+    `--accounts` to one currency for combined totals.
 - `accounts` — balances, equity and freshness per account, plus the
   snapshot's `generated_at`.
+  - `--format table|json|csv` (default `table`). `--json` is a documented
+    alias for `--format json`.
 - `set-passphrase` — store the snapshot decryption passphrase in the OS
   keychain (macOS Keychain / Windows Credential Manager / Linux Secret
   Service). Prompted twice, never echoed.
-- `version` — binary version and supported snapshot schema.
+- `version` — binary version and supported snapshot schema (also
+  available as `mt5-pnl-cli --version`).
 
 Both query commands accept `--snapshot PATH` (overrides
 `MT5_PNL_SNAPSHOT`) and `--stale-after` (default `2h`) — when the
 snapshot is older than that, a warning goes to **stderr**, never stdout,
-so `--json` pipelines stay clean.
+so machine-output pipelines stay clean.
 
 ## How it works
 
