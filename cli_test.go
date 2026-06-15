@@ -368,3 +368,36 @@ func TestPnLMixedCurrencyJSONNull(t *testing.T) {
 		t.Errorf("want null total under mixed currency, got:\n%s", out)
 	}
 }
+
+func TestPnLMixedCurrencyCSVOmitsCombined(t *testing.T) {
+	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
+	out, errOut, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--format", "csv", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %s", code, errOut)
+	}
+	if strings.Contains(out, "ALL") {
+		t.Errorf("mixed CSV should omit the combined ALL row:\n%s", out)
+	}
+	if !strings.Contains(out, "USD Acct") || !strings.Contains(out, "EUR Acct") {
+		t.Errorf("mixed CSV should keep per-account rows:\n%s", out)
+	}
+	if !strings.Contains(errOut, "multiple currencies") {
+		t.Errorf("want mixed-currency warning on stderr, got %q", errOut)
+	}
+}
+
+func TestAccountsInvalidFormat(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "accounts", "--format", "yaml")
+	if code != 1 || !strings.Contains(errOut, "invalid --format") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestAccountsFormatJSONConflict(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "accounts", "--json", "--format", "csv")
+	if code != 1 || !strings.Contains(errOut, "conflicts") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
