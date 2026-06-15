@@ -92,6 +92,6 @@ The binary's `version` output is injected from the tag via ldflags.
 ## Conventions
 
 See [`CLAUDE.md`](CLAUDE.md) — the canonical reference for coding style,
-architectural rules, and gotchas (NZ English, the no-config-file and
+architectural rules, and gotchas (British/Commonwealth English, the no-config-file and
 keychain-only invariants, golden-file workflow, doc-sync rule). It's
 loaded automatically by Claude Code but reads as a normal project doc.
