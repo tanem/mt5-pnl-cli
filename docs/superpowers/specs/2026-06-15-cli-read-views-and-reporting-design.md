@@ -56,9 +56,9 @@ spreadsheet or tax register.
   shell alias — never a configuration schema. (See Recorded decisions.)
 - No multi-currency reporting and no home-currency conversion. Real
   cross-currency aggregation needs FX rates and a rate source; that is
-  out of scope. Converting to a reporting currency (e.g. NZD for a tax
-  return) is deliberately left to the user with their tax authority's
-  approved rates — the CLI always reports in the account currency. This
+  out of scope. Converting to a reporting currency for a tax return is
+  deliberately left to the user with their tax authority's approved
+  rates — the CLI always reports in the account currency. This
   round only adds a guard so the tool never silently sums across
   currencies.
 - No human-readable mapping of MT5 integer enums (`type`, `entry`,
