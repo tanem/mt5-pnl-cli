@@ -9,14 +9,26 @@ import (
 	"github.com/tanem/mt5-pnl-cli/internal/render"
 )
 
+const accountsHelp = `Usage: mt5-pnl-cli accounts [flags]
+
+List accounts with balance, equity and freshness.
+
+Flags:
+  --format table|json|csv   output format (default table)
+  --json                    alias for --format json
+  --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
+  --stale-after DUR         staleness warning threshold (default 2h)
+  -h, --help                show this help
+`
+
 func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (string, error)) int {
 	fs := flag.NewFlagSet("accounts", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	asJSON := fs.Bool("json", false, "emit JSON instead of a table")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
-	if err := fs.Parse(args); err != nil {
-		return 1
+	if ok, code := parseFlags(fs, args, stdout, accountsHelp); !ok {
+		return code
 	}
 
 	snap, err := loadSnapshot(*snapFlag, *staleAfter, stderr, getPassphrase)

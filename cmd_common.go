@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -83,4 +84,23 @@ func loadSnapshot(pathFlag string, staleAfter time.Duration, stderr io.Writer, g
 	}
 	warnIfStale(stderr, snap.GeneratedAt, staleAfter, time.Now())
 	return snap, nil
+}
+
+// parseFlags parses fs, separating the two failure modes flag conflates:
+// -h/--help prints the hand-written help to stdout and signals a clean exit
+// (ok=false, code 0); any other parse error has already been written to fs's
+// output (stderr) by the flag package, so we just signal exit 1. fs.Usage is
+// suppressed so flag never dumps its own auto-generated usage.
+func parseFlags(fs *flag.FlagSet, args []string, stdout io.Writer, help string) (ok bool, code int) {
+	fs.Usage = func() {}
+	err := fs.Parse(args)
+	switch {
+	case err == nil:
+		return true, 0
+	case errors.Is(err, flag.ErrHelp):
+		fmt.Fprint(stdout, help)
+		return false, 0
+	default:
+		return false, 1
+	}
 }

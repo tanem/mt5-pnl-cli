@@ -228,3 +228,36 @@ func TestNoCommand(t *testing.T) {
 		t.Errorf("exit %d, stderr %q", code, errOut)
 	}
 }
+
+func TestPnLHelpToStdout(t *testing.T) {
+	out, errOut, code := runCLI(t, "", "pnl", "-h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, "Usage: mt5-pnl-cli pnl") {
+		t.Errorf("help should be on stdout, got %q", out)
+	}
+	if errOut != "" {
+		t.Errorf("help should not write stderr, got %q", errOut)
+	}
+}
+
+func TestPnLParseErrorToStderr(t *testing.T) {
+	out, errOut, code := runCLI(t, "", "pnl", "--nope")
+	if code != 1 {
+		t.Fatalf("exit %d", code)
+	}
+	if out != "" {
+		t.Errorf("parse error should not write stdout, got %q", out)
+	}
+	if !strings.Contains(errOut, "not defined") {
+		t.Errorf("want flag error on stderr, got %q", errOut)
+	}
+}
+
+func TestAccountsHelpToStdout(t *testing.T) {
+	out, _, code := runCLI(t, "", "accounts", "--help")
+	if code != 0 || !strings.Contains(out, "Usage: mt5-pnl-cli accounts") {
+		t.Errorf("exit %d, out %q", code, out)
+	}
+}
