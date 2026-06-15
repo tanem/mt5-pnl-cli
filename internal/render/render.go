@@ -3,6 +3,7 @@
 package render
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -126,4 +127,67 @@ func AccountsJSON(w io.Writer, accounts []snapshot.AccountSnapshot) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(accounts)
+}
+
+// money formats a value at display precision (2 dp) for CSV cells.
+func money(x float64) string {
+	return strconv.FormatFloat(round(x, 2), 'f', 2, 64)
+}
+
+// PnLCSV writes per-period rows as CSV (header + rows, no summary). Under
+// mixed currency the combined ALL rows are omitted, since they would sum
+// across currencies; per-account rows (each single-currency) still print.
+func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bool) error {
+	cw := csv.NewWriter(w)
+	if err := cw.Write([]string{
+		"period", "account_login", "account_label",
+		"pnl", "trades", "wins", "losses", "gross_profit", "gross_loss",
+	}); err != nil {
+		return err
+	}
+	for _, r := range rows {
+		combined := r.Account == nil
+		if mixed && combined {
+			continue
+		}
+		login, label := "", "ALL"
+		if !combined {
+			login = strconv.FormatInt(*r.Account, 10)
+			label = labels[*r.Account]
+			if label == "" {
+				label = login
+			}
+		}
+		if err := cw.Write([]string{
+			r.Period, login, label,
+			money(r.PnL), strconv.Itoa(r.Trades), strconv.Itoa(r.Wins), strconv.Itoa(r.Losses),
+			money(r.GrossProfit), money(r.GrossLoss),
+		}); err != nil {
+			return err
+		}
+	}
+	cw.Flush()
+	return cw.Error()
+}
+
+// AccountsCSV writes one row per account (header + rows). Nullable timestamps
+// and errors render as empty cells.
+func AccountsCSV(w io.Writer, accounts []snapshot.AccountSnapshot) error {
+	cw := csv.NewWriter(w)
+	if err := cw.Write([]string{
+		"login", "label", "currency", "balance", "equity", "last_success_at", "last_error",
+	}); err != nil {
+		return err
+	}
+	for _, a := range accounts {
+		if err := cw.Write([]string{
+			strconv.FormatInt(a.Login, 10), a.Label, a.Currency,
+			money(a.Balance), money(a.Equity),
+			strOr(a.LastSuccessAt, ""), strOr(a.LastError, ""),
+		}); err != nil {
+			return err
+		}
+	}
+	cw.Flush()
+	return cw.Error()
 }

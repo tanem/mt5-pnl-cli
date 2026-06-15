@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/tanem/mt5-pnl-cli/internal/aggregate"
@@ -153,5 +154,44 @@ func TestAccountsJSON(t *testing.T) {
 		if !bytes.Contains(buf.Bytes(), []byte(want)) {
 			t.Errorf("accounts JSON missing %q:\n%s", want, buf.String())
 		}
+	}
+}
+
+func TestPnLCSV(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.PnLCSV(&buf, rows, labels, false); err != nil {
+		t.Fatal(err)
+	}
+	want := "period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_loss\n" +
+		"2026-01-05,111,Trend EA,5.00,2,1,1,9.00,-4.00\n" +
+		"2026-01-05,,ALL,5.00,2,1,1,9.00,-4.00\n"
+	if buf.String() != want {
+		t.Errorf("CSV mismatch:\ngot:\n%s\nwant:\n%s", buf.String(), want)
+	}
+}
+
+func TestPnLCSVMixedOmitsCombined(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.PnLCSV(&buf, rows, labels, true); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "ALL") {
+		t.Errorf("mixed CSV should omit the combined ALL row:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "2026-01-05,111,Trend EA") {
+		t.Errorf("mixed CSV should keep per-account rows:\n%s", buf.String())
+	}
+}
+
+func TestAccountsCSV(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.AccountsCSV(&buf, accounts); err != nil {
+		t.Fatal(err)
+	}
+	want := "login,label,currency,balance,equity,last_success_at,last_error\n" +
+		"111,Trend EA,USD,1000.00,1010.50,2026-06-13T00:00:00Z,\n" +
+		"222,Scalper EA,USD,500.00,500.00,,login failed\n"
+	if buf.String() != want {
+		t.Errorf("CSV mismatch:\ngot:\n%s\nwant:\n%s", buf.String(), want)
 	}
 }
