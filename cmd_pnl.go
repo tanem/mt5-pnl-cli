@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/tanem/mt5-pnl-cli/internal/aggregate"
@@ -35,11 +36,20 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	to := fs.String("to", "", "end date (YYYY-MM-DD); defaults to today")
 	by := fs.String("by", "week", "group results by: day, week or month")
 	accountsSpec := fs.String("accounts", "", "comma-separated account labels (default: all)")
-	asJSON := fs.Bool("json", false, "emit JSON instead of a table")
+	asJSON := fs.Bool("json", false, "alias for --format json")
+	formatFlag := fs.String("format", "table", "output format: table, json or csv")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
 	if ok, code := parseFlags(fs, args, stdout, pnlHelp); !ok {
 		return code
+	}
+
+	set := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	format, err := resolveFormat(*formatFlag, set["format"], set["json"], *asJSON)
+	if err != nil {
+		fmt.Fprintln(stderr, "error:", err)
+		return 1
 	}
 
 	if *by != "day" && *by != "week" && *by != "month" {
@@ -73,10 +83,21 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 		labels[a.Login] = a.Label
 	}
 
-	if *asJSON {
-		err = render.PnLJSON(stdout, rows, sum, false)
-	} else {
-		err = render.PnLTable(stdout, rows, sum, labels, false)
+	curs := currenciesInScope(snap.Accounts, filter, rows)
+	mixed := len(curs) > 1
+	if mixed {
+		fmt.Fprintf(stderr,
+			"warning: accounts span multiple currencies (%s); combined totals are suppressed — narrow --accounts to one currency\n",
+			strings.Join(curs, ", "))
+	}
+
+	switch format {
+	case "json":
+		err = render.PnLJSON(stdout, rows, sum, mixed)
+	case "csv":
+		err = render.PnLCSV(stdout, rows, labels, mixed)
+	default:
+		err = render.PnLTable(stdout, rows, sum, labels, mixed)
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)

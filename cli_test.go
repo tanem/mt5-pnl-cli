@@ -271,3 +271,100 @@ func TestTopLevelHelpMentionsFormat(t *testing.T) {
 		t.Errorf("top-level help should mention --format:\n%s", out)
 	}
 }
+
+const mixedFixtureJSON = `{
+  "schema_version": "1.0",
+  "generated_at": "2026-06-13T00:00:00Z",
+  "accounts": [
+    {"login": 111, "label": "USD Acct", "currency": "USD", "balance": 1000.0,
+     "equity": 1000.0, "last_success_at": "2026-06-13T00:00:00Z", "last_error": null},
+    {"login": 333, "label": "EUR Acct", "currency": "EUR", "balance": 800.0,
+     "equity": 800.0, "last_success_at": "2026-06-13T00:00:00Z", "last_error": null}
+  ],
+  "closed_deals": [
+    {"account": 111, "time": 1767607200, "profit": 10.0, "swap": 0.0, "commission": 0.0, "fee": 0.0,
+     "ticket": 1, "order": 1, "position_id": 1, "time_msc": 0, "type": 0, "entry": 1, "reason": 0,
+     "magic": 0, "volume": 0.1, "price": 1.0, "symbol": "EURUSD", "comment": "", "external_id": ""},
+    {"account": 333, "time": 1767607200, "profit": 7.0, "swap": 0.0, "commission": 0.0, "fee": 0.0,
+     "ticket": 2, "order": 2, "position_id": 2, "time_msc": 0, "type": 0, "entry": 1, "reason": 0,
+     "magic": 0, "volume": 0.1, "price": 1.0, "symbol": "EURUSD", "comment": "", "external_id": ""}
+  ],
+  "open_positions": [],
+  "cash_flows": []
+}`
+
+func TestPnLFormatCSV(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--format", "csv", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.HasPrefix(out, "period,account_login,account_label,pnl,") {
+		t.Errorf("want CSV header first, got:\n%s", out)
+	}
+}
+
+func TestPnLFormatJSONMatchesJSONAlias(t *testing.T) {
+	path := fixture(t)
+	a, _, _ := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--format", "json", "--stale-after", "876000h")
+	b, _, _ := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--json", "--stale-after", "876000h")
+	if a != b || a == "" {
+		t.Errorf("--format json and --json should match;\nformat:\n%s\njson:\n%s", a, b)
+	}
+}
+
+func TestPnLInvalidFormat(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--format", "yaml")
+	if code != 1 || !strings.Contains(errOut, "invalid --format") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestPnLFormatJSONConflict(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--json", "--format", "csv")
+	if code != 1 || !strings.Contains(errOut, "conflicts") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestAccountsFormatCSV(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass", "accounts", "--snapshot", path,
+		"--format", "csv", "--stale-after", "876000h")
+	if code != 0 || !strings.HasPrefix(out, "login,label,currency,") {
+		t.Errorf("exit %d, want accounts CSV header, got:\n%s", code, out)
+	}
+}
+
+func TestPnLMixedCurrencyTableSuppresses(t *testing.T) {
+	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
+	out, errOut, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %s", code, errOut)
+	}
+	if !strings.Contains(errOut, "multiple currencies") {
+		t.Errorf("want mixed-currency warning on stderr, got %q", errOut)
+	}
+	if !strings.Contains(out, "n/a") {
+		t.Errorf("want suppressed combined total (n/a) in table, got:\n%s", out)
+	}
+}
+
+func TestPnLMixedCurrencyJSONNull(t *testing.T) {
+	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
+	out, _, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--json", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, `"total_pnl": null`) {
+		t.Errorf("want null total under mixed currency, got:\n%s", out)
+	}
+}

@@ -24,11 +24,20 @@ Flags:
 func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (string, error)) int {
 	fs := flag.NewFlagSet("accounts", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	asJSON := fs.Bool("json", false, "emit JSON instead of a table")
+	asJSON := fs.Bool("json", false, "alias for --format json")
+	formatFlag := fs.String("format", "table", "output format: table, json or csv")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
 	if ok, code := parseFlags(fs, args, stdout, accountsHelp); !ok {
 		return code
+	}
+
+	set := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	format, err := resolveFormat(*formatFlag, set["format"], set["json"], *asJSON)
+	if err != nil {
+		fmt.Fprintln(stderr, "error:", err)
+		return 1
 	}
 
 	snap, err := loadSnapshot(*snapFlag, *staleAfter, stderr, getPassphrase)
@@ -37,9 +46,12 @@ func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (
 		return 1
 	}
 
-	if *asJSON {
+	switch format {
+	case "json":
 		err = render.AccountsJSON(stdout, snap.Accounts)
-	} else {
+	case "csv":
+		err = render.AccountsCSV(stdout, snap.Accounts)
+	default:
 		err = render.AccountsTable(stdout, snap.Accounts, snap.GeneratedAt)
 	}
 	if err != nil {
