@@ -49,7 +49,7 @@ func checkGolden(t *testing.T, name string, got []byte) {
 
 func TestPnLTable(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, false); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -63,7 +63,7 @@ func TestPnLTable(t *testing.T) {
 
 func TestPnLTableUnknownLabelFallsBackToLogin(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, nil); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("111")) {
@@ -73,7 +73,7 @@ func TestPnLTableUnknownLabelFallsBackToLogin(t *testing.T) {
 
 func TestPnLTableNilSummaryFields(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, nil, aggregate.Summary{}, nil); err != nil {
+	if err := render.PnLTable(&buf, nil, aggregate.Summary{}, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("n/a")) {
@@ -83,7 +83,7 @@ func TestPnLTableNilSummaryFields(t *testing.T) {
 
 func TestPnLJSON(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLJSON(&buf, rows, sum); err != nil {
+	if err := render.PnLJSON(&buf, rows, sum, false); err != nil {
 		t.Fatal(err)
 	}
 	want := `{
@@ -193,5 +193,41 @@ func TestAccountsCSV(t *testing.T) {
 		"222,Scalper EA,USD,500.00,500.00,,login failed\n"
 	if buf.String() != want {
 		t.Errorf("CSV mismatch:\ngot:\n%s\nwant:\n%s", buf.String(), want)
+	}
+}
+
+func TestPnLJSONMixedNulls(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.PnLJSON(&buf, rows, sum, true); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{`"total_pnl": null`, `"profit_factor": null`, `"gross_profit": null`, `"gross_loss": null`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("mixed summary missing %q:\n%s", want, out)
+		}
+	}
+	if !strings.Contains(out, `"pnl": 5`) {
+		t.Errorf("per-account pnl should remain a number:\n%s", out)
+	}
+	if !strings.Contains(out, `"win_rate_pct": 50`) {
+		t.Errorf("count-based win rate should remain:\n%s", out)
+	}
+	if !strings.Contains(out, `"total_trades": 2`) {
+		t.Errorf("trade count should remain:\n%s", out)
+	}
+}
+
+func TestPnLTableMixedNA(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.PnLTable(&buf, rows, sum, labels, true); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "Total P&L: n/a") {
+		t.Errorf("mixed table should show n/a total:\n%s", out)
+	}
+	if !strings.Contains(out, "Trades: 2") {
+		t.Errorf("mixed table should keep trade count:\n%s", out)
 	}
 }

@@ -74,9 +74,9 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	}
 
 	if *asJSON {
-		err = render.PnLJSON(stdout, rows, sum)
+		err = render.PnLJSON(stdout, rows, sum, false)
 	} else {
-		err = render.PnLTable(stdout, rows, sum, labels)
+		err = render.PnLTable(stdout, rows, sum, labels, false)
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)

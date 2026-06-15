@@ -35,66 +35,91 @@ func fmtPtr(p *float64, format string) string {
 	return fmt.Sprintf(format, *p)
 }
 
-func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string) error {
+func numPtr(x float64) *float64 { return &x }
+
+func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, mixed bool) error {
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "PERIOD\tACCOUNT\tP&L\tTRADES\tWINS\tLOSSES")
 	for _, r := range rows {
 		acct := "ALL"
-		if r.Account != nil {
+		combined := r.Account == nil
+		if !combined {
 			acct = labels[*r.Account]
 			if acct == "" {
 				acct = strconv.FormatInt(*r.Account, 10)
 			}
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%.2f\t%d\t%d\t%d\n", r.Period, acct, r.PnL, r.Trades, r.Wins, r.Losses)
+		pnl := fmt.Sprintf("%.2f", r.PnL)
+		if mixed && combined {
+			pnl = "n/a"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\n", r.Period, acct, pnl, r.Trades, r.Wins, r.Losses)
 	}
 	if err := tw.Flush(); err != nil {
 		return err
 	}
+	totalPnL := fmt.Sprintf("%.2f", sum.TotalPnL)
+	grossProfit := fmt.Sprintf("%.2f", sum.GrossProfit)
+	grossLoss := fmt.Sprintf("%.2f", sum.GrossLoss)
+	profitFactor := fmtPtr(sum.ProfitFactor, "%.2f")
+	if mixed {
+		totalPnL, grossProfit, grossLoss, profitFactor = "n/a", "n/a", "n/a", "n/a"
+	}
 	_, err := fmt.Fprintf(w,
-		"\nTotal P&L: %.2f  Trades: %d  Win rate: %s  Profit factor: %s  Gross profit: %.2f  Gross loss: %.2f\n",
-		sum.TotalPnL, sum.TotalTrades,
-		fmtPtr(sum.WinRatePct, "%.1f%%"), fmtPtr(sum.ProfitFactor, "%.2f"),
-		sum.GrossProfit, sum.GrossLoss)
+		"\nTotal P&L: %s  Trades: %d  Win rate: %s  Profit factor: %s  Gross profit: %s  Gross loss: %s\n",
+		totalPnL, sum.TotalTrades,
+		fmtPtr(sum.WinRatePct, "%.1f%%"), profitFactor,
+		grossProfit, grossLoss)
 	return err
 }
 
 type pnlRow struct {
-	Period      string  `json:"period"`
-	Account     *int64  `json:"account"`
-	PnL         float64 `json:"pnl"`
-	Trades      int     `json:"trades"`
-	Wins        int     `json:"wins"`
-	Losses      int     `json:"losses"`
-	GrossProfit float64 `json:"gross_profit"`
-	GrossLoss   float64 `json:"gross_loss"`
+	Period      string   `json:"period"`
+	Account     *int64   `json:"account"`
+	PnL         *float64 `json:"pnl"`
+	Trades      int      `json:"trades"`
+	Wins        int      `json:"wins"`
+	Losses      int      `json:"losses"`
+	GrossProfit *float64 `json:"gross_profit"`
+	GrossLoss   *float64 `json:"gross_loss"`
 }
 
 type pnlSummary struct {
-	TotalPnL     float64  `json:"total_pnl"`
+	TotalPnL     *float64 `json:"total_pnl"`
 	TotalTrades  int      `json:"total_trades"`
 	WinRatePct   *float64 `json:"win_rate_pct"`
 	ProfitFactor *float64 `json:"profit_factor"`
-	GrossProfit  float64  `json:"gross_profit"`
-	GrossLoss    float64  `json:"gross_loss"`
+	GrossProfit  *float64 `json:"gross_profit"`
+	GrossLoss    *float64 `json:"gross_loss"`
 }
 
-func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary) error {
+// PnLJSON emits the rows and summary as JSON. Under mixed currency the
+// combined (account == nil) rows and the summary have their currency-valued
+// fields set to null (they would sum across currencies); counts and the
+// count-based win rate are kept.
+func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, mixed bool) error {
 	out := struct {
 		Rows    []pnlRow   `json:"rows"`
 		Summary pnlSummary `json:"summary"`
 	}{Rows: make([]pnlRow, 0, len(rows))}
 	for _, r := range rows {
-		out.Rows = append(out.Rows, pnlRow{
+		row := pnlRow{
 			Period: r.Period, Account: r.Account,
-			PnL: round(r.PnL, 2), Trades: r.Trades, Wins: r.Wins, Losses: r.Losses,
-			GrossProfit: round(r.GrossProfit, 2), GrossLoss: round(r.GrossLoss, 2),
-		})
+			PnL: numPtr(round(r.PnL, 2)), Trades: r.Trades, Wins: r.Wins, Losses: r.Losses,
+			GrossProfit: numPtr(round(r.GrossProfit, 2)), GrossLoss: numPtr(round(r.GrossLoss, 2)),
+		}
+		if mixed && r.Account == nil {
+			row.PnL, row.GrossProfit, row.GrossLoss = nil, nil, nil
+		}
+		out.Rows = append(out.Rows, row)
 	}
 	out.Summary = pnlSummary{
-		TotalPnL: round(sum.TotalPnL, 2), TotalTrades: sum.TotalTrades,
+		TotalPnL: numPtr(round(sum.TotalPnL, 2)), TotalTrades: sum.TotalTrades,
 		WinRatePct: roundPtr(sum.WinRatePct, 1), ProfitFactor: roundPtr(sum.ProfitFactor, 2),
-		GrossProfit: round(sum.GrossProfit, 2), GrossLoss: round(sum.GrossLoss, 2),
+		GrossProfit: numPtr(round(sum.GrossProfit, 2)), GrossLoss: numPtr(round(sum.GrossLoss, 2)),
+	}
+	if mixed {
+		out.Summary.TotalPnL, out.Summary.GrossProfit, out.Summary.GrossLoss, out.Summary.ProfitFactor = nil, nil, nil, nil
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
