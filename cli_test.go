@@ -261,3 +261,13 @@ func TestAccountsHelpToStdout(t *testing.T) {
 		t.Errorf("exit %d, out %q", code, out)
 	}
 }
+
+func TestTopLevelHelpMentionsFormat(t *testing.T) {
+	out, _, code := runCLI(t, "", "help")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, "--format") {
+		t.Errorf("top-level help should mention --format:\n%s", out)
+	}
+}

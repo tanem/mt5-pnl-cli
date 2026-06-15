@@ -47,11 +47,11 @@ func usage(w io.Writer) {
 
 Usage:
   mt5-pnl-cli pnl [--last 30d | --from YYYY-MM-DD [--to YYYY-MM-DD]]
-                  [--by day|week|month] [--accounts "A,B"] [--json]
-                  [--snapshot PATH] [--stale-after 2h]
-  mt5-pnl-cli accounts [--json] [--snapshot PATH] [--stale-after 2h]
+                  [--by day|week|month] [--accounts "A,B"]
+                  [--format table|json|csv] [--snapshot PATH] [--stale-after 2h]
+  mt5-pnl-cli accounts [--format table|json|csv] [--snapshot PATH] [--stale-after 2h]
   mt5-pnl-cli set-passphrase
-  mt5-pnl-cli version
+  mt5-pnl-cli version   (or --version)
 
 The snapshot path comes from --snapshot or the MT5_PNL_SNAPSHOT environment
 variable. The decryption passphrase comes from the OS keychain; store it
