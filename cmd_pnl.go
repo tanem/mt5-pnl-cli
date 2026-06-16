@@ -101,13 +101,18 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 			strings.Join(curs, ", "))
 	}
 
+	opts := render.TableOpts{}
+	if len(curs) == 1 {
+		opts.Currency = curs[0]
+	}
+
 	switch format {
 	case "json":
 		err = render.PnLJSON(stdout, rows, sum, mixed)
 	case "csv":
 		err = render.PnLCSV(stdout, rows, labels, mixed)
 	default:
-		err = render.PnLTable(stdout, rows, sum, labels, mixed, render.TableOpts{})
+		err = render.PnLTable(stdout, rows, sum, labels, mixed, opts)
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)

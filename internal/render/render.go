@@ -95,8 +95,10 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 		totalPnL, grossProfit, grossLoss, profitFactor = "n/a", "n/a", "n/a", "n/a"
 		totalTone = toneNone
 	}
+	// Currency is shown only for single-currency scope; under mixed currency
+	// the total is "n/a", so a currency tag would be incoherent ("n/a USD").
 	cur := ""
-	if opts.Currency != "" {
+	if opts.Currency != "" && !mixed {
 		cur = " " + opts.Currency
 	}
 	_, err := fmt.Fprintf(w,

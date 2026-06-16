@@ -85,7 +85,7 @@ PERIOD      ACCOUNT      P&L  TRADES  WINS  LOSSES
 2026-01-12  Trend EA    5.00       1     1       0
 2026-01-12  ALL         5.00       1     1       0
 
-Total P&L: 10.00  Trades: 4  Win rate: 50.0%  Profit factor: 3.50  Gross profit: 14.00  Gross loss: -4.00
+Total P&L: 10.00 USD  Trades: 4  Win rate: 50.0%  Profit factor: 3.50  Gross profit: 14.00  Gross loss: -4.00
 ```
 
 ```
@@ -165,7 +165,8 @@ period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_los
   - `--accounts "Trend EA,Scalper EA"` filters by account label
     (case-insensitive; default all).
   - `--format table|json|csv` (default `table`). CSV is header + rows only (no summary
-    block) — the spreadsheet/import path.
+    block) — the spreadsheet/import path. The table summary footer shows the
+    account currency when all in-scope accounts use the same one (e.g. `Total P&L: 10.00 USD`).
   - **Mixed currencies.** If the accounts in scope span more than one
     currency, combined `ALL` rows and the summary are suppressed (`n/a` in
     tables, `null` in JSON, omitted from CSV) and a warning goes to

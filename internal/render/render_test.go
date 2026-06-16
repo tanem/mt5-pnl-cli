@@ -231,3 +231,23 @@ func TestPnLTableMixedNA(t *testing.T) {
 		t.Errorf("mixed table should keep trade count:\n%s", out)
 	}
 }
+
+func TestPnLTableCurrencyFooter(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{Currency: "USD"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "Total P&L: 5.00 USD") {
+		t.Errorf("summary should show the currency:\n%s", buf.String())
+	}
+}
+
+func TestPnLTableNoCurrencyWhenUnset(t *testing.T) {
+	var buf bytes.Buffer
+	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "USD") {
+		t.Errorf("no currency expected when unset:\n%s", buf.String())
+	}
+}
