@@ -10,6 +10,30 @@ import (
 // recovers the real version from the embedded build info instead.
 var version = "dev"
 
+// commit and date are injected by GoReleaser via -ldflags; empty for local
+// builds and `go install`, where they are simply omitted from the output.
+var (
+	commit = ""
+	date   = ""
+)
+
+// formatVersion renders the binary identity line (without the schema suffix,
+// which the caller appends). commit/date are shown only when set.
+func formatVersion(ver, commit, date string) string {
+	s := "mt5-pnl-cli " + ver
+	var extra []string
+	if commit != "" {
+		extra = append(extra, "commit "+commit)
+	}
+	if date != "" {
+		extra = append(extra, "built "+date)
+	}
+	if len(extra) > 0 {
+		s += " (" + strings.Join(extra, ", ") + ")"
+	}
+	return s
+}
+
 // resolveVersion reports the version to display, preferring the GoReleaser
 // ldflag and otherwise falling back to the module version Go embeds in the
 // build info (so `go install ...@v1.0.0` reports 1.0.0 rather than dev).

@@ -5,6 +5,26 @@ import (
 	"testing"
 )
 
+func TestFormatVersion(t *testing.T) {
+	tests := []struct {
+		name              string
+		ver, commit, date string
+		want              string
+	}{
+		{"version only", "1.2.3", "", "", "mt5-pnl-cli 1.2.3"},
+		{"all set", "1.2.3", "abc1234", "2026-06-16", "mt5-pnl-cli 1.2.3 (commit abc1234, built 2026-06-16)"},
+		{"commit only", "1.2.3", "abc1234", "", "mt5-pnl-cli 1.2.3 (commit abc1234)"},
+		{"date only", "1.2.3", "", "2026-06-16", "mt5-pnl-cli 1.2.3 (built 2026-06-16)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatVersion(tt.ver, tt.commit, tt.date); got != tt.want {
+				t.Errorf("formatVersion(%q,%q,%q) = %q, want %q", tt.ver, tt.commit, tt.date, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestVersionFrom(t *testing.T) {
 	withMainVersion := func(v string) func() (*debug.BuildInfo, bool) {
 		return func() (*debug.BuildInfo, bool) {
