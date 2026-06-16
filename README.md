@@ -76,7 +76,7 @@ mt5-pnl-cli accounts     # balances, equity, freshness
 
 ## Demo
 
-Per-account and combined (`ALL`) rows per period, with a summary line:
+Per-account and combined (`ALL`) rows per period, with a summary block:
 
 ```
 $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31
@@ -87,7 +87,25 @@ PERIOD      ACCOUNT      P&L  TRADES  WINS  LOSSES
 2026-01-12  Trend EA    5.00       1     1       0
 2026-01-12  ALL         5.00       1     1       0
 
-Total P&L: 10.00 USD  Trades: 4  Win rate: 50.0%  Profit factor: 3.50  Gross profit: 14.00  Gross loss: -4.00
+Summary
+  Performance
+    Trades         4
+    Win rate       50.0%
+    Profit factor  3.50
+    Expectancy     2.50
+    Avg win        7.00
+    Avg loss       -4.00
+    Largest win    9.00
+    Largest loss   -4.00
+    Max drawdown   -4.00
+    Gross profit   14.00
+    Gross loss     -4.00
+  P&L breakdown
+    Trade profit   13.00
+    Commission     -2.00
+    Swap           -1.00
+    Fee            0.00
+    Net P&L        10.00 USD
 ```
 
 ```
@@ -110,6 +128,10 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
       "period": "2026-01-01",
       "account": 111,
       "pnl": 10,
+      "trade_profit": 13,
+      "commission": -2,
+      "swap": -1,
+      "fee": 0,
       "trades": 3,
       "wins": 2,
       "losses": 1,
@@ -120,6 +142,10 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
       "period": "2026-01-01",
       "account": null,
       "pnl": 10,
+      "trade_profit": 13,
+      "commission": -2,
+      "swap": -1,
+      "fee": 0,
       "trades": 3,
       "wins": 2,
       "losses": 1,
@@ -132,8 +158,18 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
     "total_trades": 3,
     "win_rate_pct": 66.7,
     "profit_factor": 3.5,
+    "expectancy": 3.33,
+    "avg_win": 7,
+    "avg_loss": -4,
+    "largest_win": 9,
+    "largest_loss": -4,
+    "max_drawdown": -4,
     "gross_profit": 14,
-    "gross_loss": -4
+    "gross_loss": -4,
+    "trade_profit": 13,
+    "commission": -2,
+    "swap": -1,
+    "fee": 0
   }
 }
 ```
@@ -142,9 +178,9 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
 
 ```
 $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --format csv
-period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_loss
-2026-01-01,111,Trend EA,10.00,3,2,1,14.00,-4.00
-2026-01-01,,ALL,10.00,3,2,1,14.00,-4.00
+period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss
+2026-01-01,111,Trend EA,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
+2026-01-01,,ALL,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
 ```
 
 ## Commands
@@ -166,9 +202,29 @@ period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_los
     UTC).
   - `--accounts "Trend EA,Scalper EA"` filters by account label
     (case-insensitive; default all).
-  - `--format table|json|csv` (default `table`). CSV is header + rows only (no summary
-    block) — the spreadsheet/import path. The table summary footer shows the
-    account currency when all in-scope accounts use the same one (e.g. `Total P&L: 10.00 USD`).
+  - `--format table|json|csv` (default `table`). The table footer is a
+    **Summary** block in two groups — *Performance* (trades, win rate,
+    profit factor, expectancy, average and largest win/loss, max drawdown,
+    gross profit/loss) and *P&L breakdown* (trade profit, commission, swap,
+    fee, and the net). JSON carries the same fields per row and in the
+    summary; CSV is header + rows only (no summary), with the component
+    columns `pnl,trade_profit,commission,swap,fee` so a `--by month` export
+    drops straight into a spreadsheet or tax register. The summary footer
+    shows the account currency when all in-scope accounts share one
+    (e.g. `Net P&L  10.00 USD`).
+  - **P&L components.** Net P&L is `trade_profit + commission + swap + fee`.
+    Keeping the parts separate shows where a result came from — trading
+    versus broker costs — which the net alone hides. Many tax regimes treat
+    realised trade profit as income and commission/swap/fee as deductible
+    expenses, so `pnl --by month --format csv` gives per-account, per-month
+    component columns ready for a return; figures are always in the account
+    currency (no home-currency conversion — see Mixed currencies).
+  - **Max drawdown** is the largest peak-to-trough decline of the
+    *realised* P&L curve over the selected deals (ordered by time,
+    accumulated from zero), reported signed-negative. It is **not**
+    account-equity drawdown — it excludes deposits, open positions and
+    starting balance, so it will not match a broker's equity-drawdown
+    figure.
   - `--color auto|always|never` (default `auto`): colourise P&L cells and
     the summary total by sign (green for profit, red for loss). `auto` enables
     colour only when writing to an interactive terminal and honours the
