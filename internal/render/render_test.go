@@ -18,14 +18,17 @@ var update = flag.Bool("update", false, "rewrite golden files")
 func ptr[T any](v T) *T { return &v }
 
 var rows = []aggregate.Row{
-	{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.004, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
-	{Period: "2026-01-05", Account: nil, PnL: 5.004, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
+	{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.004, TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
+	{Period: "2026-01-05", Account: nil, PnL: 5.004, TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
 }
 
 var sum = aggregate.Summary{
 	TotalPnL: 5.004, TotalTrades: 2,
 	WinRatePct: ptr(50.0), ProfitFactor: ptr(2.2522522522522523),
 	GrossProfit: 9.0, GrossLoss: -3.996,
+	Expectancy: ptr(2.502), AvgWin: ptr(9.0), AvgLoss: ptr(-3.996),
+	LargestWin: ptr(9.0), LargestLoss: ptr(-3.996), MaxDrawdown: ptr(-3.996),
+	TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0,
 }
 
 var labels = map[int64]string{111: "Trend EA"}
@@ -92,6 +95,10 @@ func TestPnLJSON(t *testing.T) {
       "period": "2026-01-05",
       "account": 111,
       "pnl": 5,
+      "trade_profit": 6,
+      "commission": -0.5,
+      "swap": -0.5,
+      "fee": 0,
       "trades": 2,
       "wins": 1,
       "losses": 1,
@@ -102,6 +109,10 @@ func TestPnLJSON(t *testing.T) {
       "period": "2026-01-05",
       "account": null,
       "pnl": 5,
+      "trade_profit": 6,
+      "commission": -0.5,
+      "swap": -0.5,
+      "fee": 0,
       "trades": 2,
       "wins": 1,
       "losses": 1,
@@ -114,8 +125,18 @@ func TestPnLJSON(t *testing.T) {
     "total_trades": 2,
     "win_rate_pct": 50,
     "profit_factor": 2.25,
+    "expectancy": 2.5,
+    "avg_win": 9,
+    "avg_loss": -4,
+    "largest_win": 9,
+    "largest_loss": -4,
+    "max_drawdown": -4,
     "gross_profit": 9,
-    "gross_loss": -4
+    "gross_loss": -4,
+    "trade_profit": 6,
+    "commission": -0.5,
+    "swap": -0.5,
+    "fee": 0
   }
 }
 `
@@ -202,7 +223,13 @@ func TestPnLJSONMixedNulls(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{`"total_pnl": null`, `"profit_factor": null`, `"gross_profit": null`, `"gross_loss": null`} {
+	for _, want := range []string{
+		`"total_pnl": null`, `"profit_factor": null`,
+		`"expectancy": null`, `"avg_win": null`, `"avg_loss": null`,
+		`"largest_win": null`, `"largest_loss": null`, `"max_drawdown": null`,
+		`"gross_profit": null`, `"gross_loss": null`,
+		`"trade_profit": null`, `"commission": null`, `"swap": null`, `"fee": null`,
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("mixed summary missing %q:\n%s", want, out)
 		}

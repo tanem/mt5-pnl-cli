@@ -114,6 +114,10 @@ type pnlRow struct {
 	Period      string   `json:"period"`
 	Account     *int64   `json:"account"`
 	PnL         *float64 `json:"pnl"`
+	TradeProfit *float64 `json:"trade_profit"`
+	Commission  *float64 `json:"commission"`
+	Swap        *float64 `json:"swap"`
+	Fee         *float64 `json:"fee"`
 	Trades      int      `json:"trades"`
 	Wins        int      `json:"wins"`
 	Losses      int      `json:"losses"`
@@ -126,8 +130,18 @@ type pnlSummary struct {
 	TotalTrades  int      `json:"total_trades"`
 	WinRatePct   *float64 `json:"win_rate_pct"`
 	ProfitFactor *float64 `json:"profit_factor"`
+	Expectancy   *float64 `json:"expectancy"`
+	AvgWin       *float64 `json:"avg_win"`
+	AvgLoss      *float64 `json:"avg_loss"`
+	LargestWin   *float64 `json:"largest_win"`
+	LargestLoss  *float64 `json:"largest_loss"`
+	MaxDrawdown  *float64 `json:"max_drawdown"`
 	GrossProfit  *float64 `json:"gross_profit"`
 	GrossLoss    *float64 `json:"gross_loss"`
+	TradeProfit  *float64 `json:"trade_profit"`
+	Commission   *float64 `json:"commission"`
+	Swap         *float64 `json:"swap"`
+	Fee          *float64 `json:"fee"`
 }
 
 // PnLJSON emits the rows and summary as JSON. Under mixed currency the
@@ -142,21 +156,40 @@ func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, mixed boo
 	for _, r := range rows {
 		row := pnlRow{
 			Period: r.Period, Account: r.Account,
-			PnL: numPtr(round(r.PnL, 2)), Trades: r.Trades, Wins: r.Wins, Losses: r.Losses,
+			PnL:         numPtr(round(r.PnL, 2)),
+			TradeProfit: numPtr(round(r.TradeProfit, 2)),
+			Commission:  numPtr(round(r.Commission, 2)),
+			Swap:        numPtr(round(r.Swap, 2)),
+			Fee:         numPtr(round(r.Fee, 2)),
+			Trades:      r.Trades, Wins: r.Wins, Losses: r.Losses,
 			GrossProfit: numPtr(round(r.GrossProfit, 2)), GrossLoss: numPtr(round(r.GrossLoss, 2)),
 		}
 		if mixed && r.Account == nil {
 			row.PnL, row.GrossProfit, row.GrossLoss = nil, nil, nil
+			row.TradeProfit, row.Commission, row.Swap, row.Fee = nil, nil, nil, nil
 		}
 		out.Rows = append(out.Rows, row)
 	}
 	out.Summary = pnlSummary{
 		TotalPnL: numPtr(round(sum.TotalPnL, 2)), TotalTrades: sum.TotalTrades,
 		WinRatePct: roundPtr(sum.WinRatePct, 1), ProfitFactor: roundPtr(sum.ProfitFactor, 2),
+		Expectancy:  roundPtr(sum.Expectancy, 2),
+		AvgWin:      roundPtr(sum.AvgWin, 2),
+		AvgLoss:     roundPtr(sum.AvgLoss, 2),
+		LargestWin:  roundPtr(sum.LargestWin, 2),
+		LargestLoss: roundPtr(sum.LargestLoss, 2),
+		MaxDrawdown: roundPtr(sum.MaxDrawdown, 2),
 		GrossProfit: numPtr(round(sum.GrossProfit, 2)), GrossLoss: numPtr(round(sum.GrossLoss, 2)),
+		TradeProfit: numPtr(round(sum.TradeProfit, 2)),
+		Commission:  numPtr(round(sum.Commission, 2)),
+		Swap:        numPtr(round(sum.Swap, 2)),
+		Fee:         numPtr(round(sum.Fee, 2)),
 	}
 	if mixed {
 		out.Summary.TotalPnL, out.Summary.GrossProfit, out.Summary.GrossLoss, out.Summary.ProfitFactor = nil, nil, nil, nil
+		out.Summary.Expectancy, out.Summary.AvgWin, out.Summary.AvgLoss = nil, nil, nil
+		out.Summary.LargestWin, out.Summary.LargestLoss, out.Summary.MaxDrawdown = nil, nil, nil
+		out.Summary.TradeProfit, out.Summary.Commission, out.Summary.Swap, out.Summary.Fee = nil, nil, nil, nil
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
