@@ -107,7 +107,7 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	case "csv":
 		err = render.PnLCSV(stdout, rows, labels, mixed)
 	default:
-		err = render.PnLTable(stdout, rows, sum, labels, mixed)
+		err = render.PnLTable(stdout, rows, sum, labels, mixed, render.TableOpts{})
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)

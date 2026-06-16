@@ -61,7 +61,7 @@ func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (
 	case "csv":
 		err = render.AccountsCSV(stdout, snap.Accounts)
 	default:
-		err = render.AccountsTable(stdout, snap.Accounts, snap.GeneratedAt)
+		err = render.AccountsTable(stdout, snap.Accounts, snap.GeneratedAt, render.TableOpts{})
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)

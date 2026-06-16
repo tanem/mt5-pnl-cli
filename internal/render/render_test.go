@@ -49,7 +49,7 @@ func checkGolden(t *testing.T, name string, got []byte) {
 
 func TestPnLTable(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels, false); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -63,7 +63,7 @@ func TestPnLTable(t *testing.T) {
 
 func TestPnLTableUnknownLabelFallsBackToLogin(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, nil, false); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, nil, false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("111")) {
@@ -73,7 +73,7 @@ func TestPnLTableUnknownLabelFallsBackToLogin(t *testing.T) {
 
 func TestPnLTableNilSummaryFields(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, nil, aggregate.Summary{}, nil, false); err != nil {
+	if err := render.PnLTable(&buf, nil, aggregate.Summary{}, nil, false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("n/a")) {
@@ -133,7 +133,7 @@ var accounts = []snapshot.AccountSnapshot{
 
 func TestAccountsTable(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.AccountsTable(&buf, accounts, "2026-06-13T00:00:00Z"); err != nil {
+	if err := render.AccountsTable(&buf, accounts, "2026-06-13T00:00:00Z", render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -220,7 +220,7 @@ func TestPnLJSONMixedNulls(t *testing.T) {
 
 func TestPnLTableMixedNA(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels, true); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, true, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()

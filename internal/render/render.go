@@ -1,4 +1,4 @@
-// Package render prints aggregate results as tabwriter tables or JSON.
+// Package render prints aggregate results as fixed-width tables or JSON.
 // All rounding to display precision happens here, not in aggregate.
 package render
 
@@ -9,7 +9,6 @@ import (
 	"io"
 	"math"
 	"strconv"
-	"text/tabwriter"
 
 	"github.com/tanem/mt5-pnl-cli/internal/aggregate"
 	"github.com/tanem/mt5-pnl-cli/internal/snapshot"
@@ -37,9 +36,31 @@ func fmtPtr(p *float64, format string) string {
 
 func numPtr(x float64) *float64 { return &x }
 
-func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, mixed bool) error {
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "PERIOD\tACCOUNT\tP&L\tTRADES\tWINS\tLOSSES")
+// TableOpts carries display-only options for the table renderers. Color enables
+// ANSI sign colouring; Currency, when set, is shown once in the pnl summary
+// footer. Both are ignored by JSON/CSV.
+type TableOpts struct {
+	Color    bool
+	Currency string
+}
+
+func signTone(x float64) tone {
+	switch {
+	case x > 0:
+		return tonePos
+	case x < 0:
+		return toneNeg
+	default:
+		return toneNone
+	}
+}
+
+func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, mixed bool, opts TableOpts) error {
+	cols := []colSpec{
+		{"PERIOD", false}, {"ACCOUNT", false}, {"P&L", true},
+		{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+	}
+	body := make([][]cell, 0, len(rows))
 	for _, r := range rows {
 		acct := "ALL"
 		combined := r.Account == nil
@@ -49,27 +70,39 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 				acct = strconv.FormatInt(*r.Account, 10)
 			}
 		}
-		pnl := fmt.Sprintf("%.2f", r.PnL)
+		pnlText := fmt.Sprintf("%.2f", r.PnL)
+		pnlTone := signTone(r.PnL)
 		if mixed && combined {
-			pnl = "n/a"
+			pnlText, pnlTone = "n/a", toneNone
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\n", r.Period, acct, pnl, r.Trades, r.Wins, r.Losses)
+		body = append(body, []cell{
+			{r.Period, toneNone}, {acct, toneNone}, {pnlText, pnlTone},
+			{strconv.Itoa(r.Trades), toneNone},
+			{strconv.Itoa(r.Wins), toneNone},
+			{strconv.Itoa(r.Losses), toneNone},
+		})
 	}
-	if err := tw.Flush(); err != nil {
+	if err := writeTable(w, cols, body, opts.Color); err != nil {
 		return err
 	}
+
 	totalPnL := fmt.Sprintf("%.2f", sum.TotalPnL)
 	grossProfit := fmt.Sprintf("%.2f", sum.GrossProfit)
 	grossLoss := fmt.Sprintf("%.2f", sum.GrossLoss)
 	profitFactor := fmtPtr(sum.ProfitFactor, "%.2f")
+	totalTone := signTone(sum.TotalPnL)
 	if mixed {
 		totalPnL, grossProfit, grossLoss, profitFactor = "n/a", "n/a", "n/a", "n/a"
+		totalTone = toneNone
+	}
+	cur := ""
+	if opts.Currency != "" {
+		cur = " " + opts.Currency
 	}
 	_, err := fmt.Fprintf(w,
-		"\nTotal P&L: %s  Trades: %d  Win rate: %s  Profit factor: %s  Gross profit: %s  Gross loss: %s\n",
-		totalPnL, sum.TotalTrades,
-		fmtPtr(sum.WinRatePct, "%.1f%%"), profitFactor,
-		grossProfit, grossLoss)
+		"\nTotal P&L: %s%s  Trades: %d  Win rate: %s  Profit factor: %s  Gross profit: %s  Gross loss: %s\n",
+		colorise(totalPnL, totalTone, opts.Color), cur, sum.TotalTrades,
+		fmtPtr(sum.WinRatePct, "%.1f%%"), profitFactor, grossProfit, grossLoss)
 	return err
 }
 
@@ -133,15 +166,25 @@ func strOr(p *string, fallback string) string {
 	return *p
 }
 
-func AccountsTable(w io.Writer, accounts []snapshot.AccountSnapshot, generatedAt string) error {
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "LOGIN\tLABEL\tCURRENCY\tBALANCE\tEQUITY\tLAST SUCCESS\tLAST ERROR")
-	for _, a := range accounts {
-		fmt.Fprintf(tw, "%d\t%s\t%s\t%.2f\t%.2f\t%s\t%s\n",
-			a.Login, a.Label, a.Currency, a.Balance, a.Equity,
-			strOr(a.LastSuccessAt, "-"), strOr(a.LastError, "-"))
+func AccountsTable(w io.Writer, accounts []snapshot.AccountSnapshot, generatedAt string, opts TableOpts) error {
+	cols := []colSpec{
+		{"LOGIN", false}, {"LABEL", false}, {"CURRENCY", false},
+		{"BALANCE", true}, {"EQUITY", true},
+		{"LAST SUCCESS", false}, {"LAST ERROR", false},
 	}
-	if err := tw.Flush(); err != nil {
+	body := make([][]cell, 0, len(accounts))
+	for _, a := range accounts {
+		body = append(body, []cell{
+			{strconv.FormatInt(a.Login, 10), toneNone},
+			{a.Label, toneNone},
+			{a.Currency, toneNone},
+			{fmt.Sprintf("%.2f", a.Balance), toneNone},
+			{fmt.Sprintf("%.2f", a.Equity), toneNone},
+			{strOr(a.LastSuccessAt, "-"), toneNone},
+			{strOr(a.LastError, "-"), toneNone},
+		})
+	}
+	if err := writeTable(w, cols, body, opts.Color); err != nil {
 		return err
 	}
 	_, err := fmt.Fprintf(w, "\nSnapshot generated: %s\n", generatedAt)

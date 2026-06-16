@@ -78,21 +78,21 @@ Per-account and combined (`ALL`) rows per period, with a summary line:
 
 ```
 $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31
-PERIOD      ACCOUNT     P&L   TRADES  WINS  LOSSES
-2026-01-05  Trend EA    5.00  2       1     1
-2026-01-05  Scalper EA  0.00  1       0     0
-2026-01-05  ALL         5.00  3       1     1
-2026-01-12  Trend EA    5.00  1       1     0
-2026-01-12  ALL         5.00  1       1     0
+PERIOD      ACCOUNT      P&L  TRADES  WINS  LOSSES
+2026-01-05  Trend EA    5.00       2     1       1
+2026-01-05  Scalper EA  0.00       1     0       0
+2026-01-05  ALL         5.00       3     1       1
+2026-01-12  Trend EA    5.00       1     1       0
+2026-01-12  ALL         5.00       1     1       0
 
 Total P&L: 10.00  Trades: 4  Win rate: 50.0%  Profit factor: 3.50  Gross profit: 14.00  Gross loss: -4.00
 ```
 
 ```
 $ mt5-pnl-cli accounts
-LOGIN  LABEL       CURRENCY  BALANCE  EQUITY   LAST SUCCESS          LAST ERROR
+LOGIN  LABEL       CURRENCY  BALANCE   EQUITY  LAST SUCCESS          LAST ERROR
 111    Trend EA    USD       1000.00  1010.50  2026-06-13T00:00:00Z  -
-222    Scalper EA  USD       500.00   500.00   -                     login failed
+222    Scalper EA  USD        500.00   500.00  -                     login failed
 
 Snapshot generated: 2026-06-13T00:00:00Z
 ```
