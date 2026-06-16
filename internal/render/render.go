@@ -246,7 +246,8 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 	cw := csv.NewWriter(w)
 	if err := cw.Write([]string{
 		"period", "account_login", "account_label",
-		"pnl", "trades", "wins", "losses", "gross_profit", "gross_loss",
+		"pnl", "trade_profit", "commission", "swap", "fee",
+		"trades", "wins", "losses", "gross_profit", "gross_loss",
 	}); err != nil {
 		return err
 	}
@@ -265,7 +266,8 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 		}
 		if err := cw.Write([]string{
 			r.Period, login, label,
-			money(r.PnL), strconv.Itoa(r.Trades), strconv.Itoa(r.Wins), strconv.Itoa(r.Losses),
+			money(r.PnL), money(r.TradeProfit), money(r.Commission), money(r.Swap), money(r.Fee),
+			strconv.Itoa(r.Trades), strconv.Itoa(r.Wins), strconv.Itoa(r.Losses),
 			money(r.GrossProfit), money(r.GrossLoss),
 		}); err != nil {
 			return err

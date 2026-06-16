@@ -183,9 +183,9 @@ func TestPnLCSV(t *testing.T) {
 	if err := render.PnLCSV(&buf, rows, labels, false); err != nil {
 		t.Fatal(err)
 	}
-	want := "period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_loss\n" +
-		"2026-01-05,111,Trend EA,5.00,2,1,1,9.00,-4.00\n" +
-		"2026-01-05,,ALL,5.00,2,1,1,9.00,-4.00\n"
+	want := "period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss\n" +
+		"2026-01-05,111,Trend EA,5.00,6.00,-0.50,-0.50,0.00,2,1,1,9.00,-4.00\n" +
+		"2026-01-05,,ALL,5.00,6.00,-0.50,-0.50,0.00,2,1,1,9.00,-4.00\n"
 	if buf.String() != want {
 		t.Errorf("CSV mismatch:\ngot:\n%s\nwant:\n%s", buf.String(), want)
 	}
