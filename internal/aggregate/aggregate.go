@@ -26,6 +26,10 @@ type Row struct {
 	Period      string
 	Account     *int64
 	PnL         float64
+	TradeProfit float64
+	Commission  float64
+	Swap        float64
+	Fee         float64
 	Trades      int
 	Wins        int
 	Losses      int
@@ -40,6 +44,10 @@ type Summary struct {
 	ProfitFactor *float64 // nil when no gross loss
 	GrossProfit  float64
 	GrossLoss    float64
+	TradeProfit  float64
+	Commission   float64
+	Swap         float64
+	Fee          float64
 }
 
 func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
@@ -67,6 +75,10 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		}
 		net := d.Profit + d.Swap + d.Commission + d.Fee
 		b.PnL += net
+		b.TradeProfit += d.Profit
+		b.Commission += d.Commission
+		b.Swap += d.Swap
+		b.Fee += d.Fee
 		b.Trades++
 		switch {
 		case net > 0:
@@ -106,6 +118,10 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 			}
 			rows = append(rows, *b)
 			combined.PnL += b.PnL
+			combined.TradeProfit += b.TradeProfit
+			combined.Commission += b.Commission
+			combined.Swap += b.Swap
+			combined.Fee += b.Fee
 			combined.Trades += b.Trades
 			combined.Wins += b.Wins
 			combined.Losses += b.Losses
@@ -114,6 +130,10 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		}
 		rows = append(rows, combined)
 		sum.TotalPnL += combined.PnL
+		sum.TradeProfit += combined.TradeProfit
+		sum.Commission += combined.Commission
+		sum.Swap += combined.Swap
+		sum.Fee += combined.Fee
 		sum.TotalTrades += combined.Trades
 		totalWins += combined.Wins
 		sum.GrossProfit += combined.GrossProfit

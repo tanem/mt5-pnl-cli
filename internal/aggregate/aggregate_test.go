@@ -23,12 +23,12 @@ func ptr[T any](v T) *T { return &v }
 //
 //	acct 111, Mon 2026-01-05: net  9.0 (10.0 - 0.5 - 0.5)  -> win
 //	acct 111, Tue 2026-01-06: net -4.0                      -> loss
-//	acct 222, Tue 2026-01-06: net  0.0 (0.7 - 0.7)          -> breakeven: neither
+//	acct 222, Tue 2026-01-06: net  0.0 (0.5 - 0.5)          -> breakeven: neither
 //	acct 111, Mon 2026-01-12: net  5.0                      -> win, next week
 var deals = []snapshot.Deal{
 	deal(111, 1767607200, 10.0, -0.5, -0.5, 0),
 	deal(111, 1767693600, -4.0, 0, 0, 0),
-	deal(222, 1767693600, 0.7, 0, -0.7, 0),
+	deal(222, 1767693600, 0.5, 0, -0.5, 0),
 	deal(111, 1768212000, 5.0, 0, 0, 0),
 }
 
@@ -37,11 +37,11 @@ func TestAggregateByWeek(t *testing.T) {
 		From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week",
 	})
 	want := []aggregate.Row{
-		{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
-		{Period: "2026-01-05", Account: ptr(int64(222)), PnL: 0.0, Trades: 1, Wins: 0, Losses: 0, GrossProfit: 0, GrossLoss: 0},
-		{Period: "2026-01-05", Account: nil, PnL: 5.0, Trades: 3, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
-		{Period: "2026-01-12", Account: ptr(int64(111)), PnL: 5.0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
-		{Period: "2026-01-12", Account: nil, PnL: 5.0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
+		{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 6.0, Commission: -0.5, Swap: -0.5, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Period: "2026-01-05", Account: ptr(int64(222)), PnL: 0.0, TradeProfit: 0.5, Commission: -0.5, Swap: 0, Fee: 0, Trades: 1, Wins: 0, Losses: 0, GrossProfit: 0, GrossLoss: 0},
+		{Period: "2026-01-05", Account: nil, PnL: 5.0, TradeProfit: 6.5, Commission: -1.0, Swap: -0.5, Fee: 0, Trades: 3, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Period: "2026-01-12", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
+		{Period: "2026-01-12", Account: nil, PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
 	}
 	if !reflect.DeepEqual(rows, want) {
 		t.Errorf("rows:\n got %+v\nwant %+v", rows, want)
