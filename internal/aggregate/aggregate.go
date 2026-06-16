@@ -7,6 +7,7 @@
 package aggregate
 
 import (
+	"cmp"
 	"math"
 	"slices"
 	"time"
@@ -47,6 +48,7 @@ type Summary struct {
 	AvgLoss      *float64 // GrossLoss / losses (negative); nil when no losses
 	LargestWin   *float64 // max single-deal net among wins; nil when no wins
 	LargestLoss  *float64 // min single-deal net among losses (negative); nil when no losses
+	MaxDrawdown  *float64 // realised-P&L drawdown (<= 0); nil when no deals; 0 when never retraces
 	GrossProfit  float64
 	GrossLoss    float64
 	TradeProfit  float64
@@ -63,6 +65,12 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 	buckets := map[key]*Row{}
 	accountSet := map[int64]bool{}
 	var largestWin, largestLoss *float64
+
+	type timed struct {
+		time, timeMsc int64
+		net           float64
+	}
+	var inScope []timed
 
 	for _, d := range deals {
 		if opts.Accounts != nil && !opts.Accounts[d.Account] {
@@ -103,6 +111,7 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 			}
 		}
 		accountSet[d.Account] = true
+		inScope = append(inScope, timed{d.Time, d.TimeMsc, net})
 	}
 
 	periodSet := map[string]bool{}
@@ -174,6 +183,25 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 	}
 	sum.LargestWin = largestWin
 	sum.LargestLoss = largestLoss
+	if len(inScope) > 0 {
+		slices.SortFunc(inScope, func(a, b timed) int {
+			if a.time != b.time {
+				return cmp.Compare(a.time, b.time)
+			}
+			return cmp.Compare(a.timeMsc, b.timeMsc)
+		})
+		var cum, peak, maxDD float64 // all start at 0
+		for _, d := range inScope {
+			cum += d.net
+			if cum > peak {
+				peak = cum
+			}
+			if dd := cum - peak; dd < maxDD {
+				maxDD = dd
+			}
+		}
+		sum.MaxDrawdown = &maxDD
+	}
 	return rows, sum
 }
 

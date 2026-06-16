@@ -116,7 +116,7 @@ func TestEmpty(t *testing.T) {
 		t.Errorf("want nil win rate and profit factor, got %+v", sum)
 	}
 	if sum.Expectancy != nil || sum.AvgWin != nil || sum.AvgLoss != nil ||
-		sum.LargestWin != nil || sum.LargestLoss != nil {
+		sum.LargestWin != nil || sum.LargestLoss != nil || sum.MaxDrawdown != nil {
 		t.Errorf("want nil metrics on empty input, got %+v", sum)
 	}
 }
@@ -144,5 +144,66 @@ func TestSummaryMetrics(t *testing.T) {
 	// only losing deal net -4.0 -> largest loss -4.0
 	if sum.LargestLoss == nil || *sum.LargestLoss != -4.0 {
 		t.Errorf("largest loss = %v, want -4.0", sum.LargestLoss)
+	}
+}
+
+var ddOpts = aggregate.Options{From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week"}
+
+const ddBase = int64(1767607200) // 2026-01-05 UTC, inside ddOpts range
+
+func TestMaxDrawdownMonotoneUp(t *testing.T) {
+	// Cumulative curve only ever rises -> no retrace -> 0.00 (not nil).
+	ds := []snapshot.Deal{
+		deal(1, ddBase, 1.0, 0, 0, 0),
+		deal(1, ddBase+60, 2.0, 0, 0, 0),
+		deal(1, ddBase+120, 3.0, 0, 0, 0),
+	}
+	_, sum := aggregate.Aggregate(ds, ddOpts)
+	if sum.MaxDrawdown == nil || *sum.MaxDrawdown != 0 {
+		t.Errorf("max drawdown = %v, want 0", sum.MaxDrawdown)
+	}
+}
+
+func TestMaxDrawdownSingleTrough(t *testing.T) {
+	// cum: 10, 6, 7 ; peak 10 ; deepest decline 6-10 = -4
+	ds := []snapshot.Deal{
+		deal(1, ddBase, 10.0, 0, 0, 0),
+		deal(1, ddBase+60, -4.0, 0, 0, 0),
+		deal(1, ddBase+120, 1.0, 0, 0, 0),
+	}
+	_, sum := aggregate.Aggregate(ds, ddOpts)
+	if sum.MaxDrawdown == nil || *sum.MaxDrawdown != -4.0 {
+		t.Errorf("max drawdown = %v, want -4.0", sum.MaxDrawdown)
+	}
+}
+
+func TestMaxDrawdownMultipleTroughsUnordered(t *testing.T) {
+	// Time order of nets: +5, -2, +3, -6, +1
+	// cum:  5,  3,  6,  0,  1 ; peak: 5, 5, 6, 6, 6 ; deepest 0-6 = -6.
+	// Input is deliberately shuffled to prove Aggregate sorts by time.
+	ds := []snapshot.Deal{
+		deal(1, ddBase+180, -6.0, 0, 0, 0),
+		deal(1, ddBase, 5.0, 0, 0, 0),
+		deal(1, ddBase+240, 1.0, 0, 0, 0),
+		deal(1, ddBase+60, -2.0, 0, 0, 0),
+		deal(1, ddBase+120, 3.0, 0, 0, 0),
+	}
+	_, sum := aggregate.Aggregate(ds, ddOpts)
+	if sum.MaxDrawdown == nil || *sum.MaxDrawdown != -6.0 {
+		t.Errorf("max drawdown = %v, want -6.0", sum.MaxDrawdown)
+	}
+}
+
+func TestMaxDrawdownTiesBrokenByTimeMsc(t *testing.T) {
+	// Three deals share Time; ordering is decided by TimeMsc.
+	// time_msc order of nets: +10, -4, -3 -> cum 10, 6, 3 -> deepest 3-10 = -7.
+	ds := []snapshot.Deal{
+		{Account: 1, Time: ddBase, TimeMsc: ddBase*1000 + 300, Profit: -3.0},
+		{Account: 1, Time: ddBase, TimeMsc: ddBase*1000 + 100, Profit: 10.0},
+		{Account: 1, Time: ddBase, TimeMsc: ddBase*1000 + 200, Profit: -4.0},
+	}
+	_, sum := aggregate.Aggregate(ds, ddOpts)
+	if sum.MaxDrawdown == nil || *sum.MaxDrawdown != -7.0 {
+		t.Errorf("max drawdown = %v, want -7.0", sum.MaxDrawdown)
 	}
 }
