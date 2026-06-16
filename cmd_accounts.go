@@ -17,6 +17,7 @@ Flags:
   --format table|json|csv   output format (default table)
   --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
   --stale-after DUR         staleness warning threshold (default 2h)
+  -q, --quiet               suppress warnings on stderr
   -h, --help                show this help
 
 Examples:
@@ -30,6 +31,9 @@ func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (
 	formatFlag := fs.String("format", "table", "output format: table, json or csv")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
+	var quiet bool
+	fs.BoolVar(&quiet, "quiet", false, "suppress warnings on stderr")
+	fs.BoolVar(&quiet, "q", false, "suppress warnings on stderr (shorthand)")
 	if ok, code := parseFlags(fs, args, stdout, accountsHelp); !ok {
 		return code
 	}
@@ -40,7 +44,12 @@ func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (
 		return 1
 	}
 
-	snap, err := loadSnapshot(*snapFlag, *staleAfter, stderr, getPassphrase)
+	warnW := io.Writer(stderr)
+	if quiet {
+		warnW = io.Discard
+	}
+
+	snap, err := loadSnapshot(*snapFlag, *staleAfter, warnW, getPassphrase)
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return 1

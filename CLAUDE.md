@@ -55,6 +55,7 @@ pre-commit run --all-files    # run the gitleaks hook manually
 - **Mixed-currency guard.** `pnl` never sums across currencies: when
   accounts in scope span more than one, combined `ALL` rows and the
   summary are suppressed (`n/a`/`null`/omitted) with a stderr warning.
+- **`--quiet`/`-q`** silences stderr warnings (staleness, mixed-currency); errors still print.
 - Dependencies are Renovate-managed; don't hand-bump pinned actions or
   module versions.
 

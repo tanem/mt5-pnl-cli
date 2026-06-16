@@ -24,6 +24,7 @@ Flags:
   --format table|json|csv   output format (default table)
   --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
   --stale-after DUR         staleness warning threshold (default 2h)
+  -q, --quiet               suppress warnings on stderr
   -h, --help                show this help
 
 Examples:
@@ -43,6 +44,9 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	formatFlag := fs.String("format", "table", "output format: table, json or csv")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
+	var quiet bool
+	fs.BoolVar(&quiet, "quiet", false, "suppress warnings on stderr")
+	fs.BoolVar(&quiet, "q", false, "suppress warnings on stderr (shorthand)")
 	if ok, code := parseFlags(fs, args, stdout, pnlHelp); !ok {
 		return code
 	}
@@ -63,7 +67,12 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 		return 1
 	}
 
-	snap, err := loadSnapshot(*snapFlag, *staleAfter, stderr, getPassphrase)
+	warnW := io.Writer(stderr)
+	if quiet {
+		warnW = io.Discard
+	}
+
+	snap, err := loadSnapshot(*snapFlag, *staleAfter, warnW, getPassphrase)
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return 1
@@ -87,7 +96,7 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	curs := currenciesInScope(snap.Accounts, filter, rows)
 	mixed := len(curs) > 1
 	if mixed {
-		fmt.Fprintf(stderr,
+		fmt.Fprintf(warnW,
 			"warning: accounts span multiple currencies (%s); combined totals are suppressed — narrow --accounts to one currency\n",
 			strings.Join(curs, ", "))
 	}

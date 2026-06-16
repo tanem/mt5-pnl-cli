@@ -455,3 +455,29 @@ func TestAccountsHelpShowsExamples(t *testing.T) {
 		t.Errorf("accounts help should show a worked example:\n%s", out)
 	}
 }
+
+func TestPnLQuietSuppressesWarnings(t *testing.T) {
+	path := fixture(t)
+	// 1ns threshold makes the snapshot stale regardless of the wall clock.
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "1ns")
+	if code != 0 || !strings.Contains(errOut, "warning") {
+		t.Fatalf("precondition: expected a staleness warning, exit %d stderr %q", code, errOut)
+	}
+	// With --quiet stderr is clean.
+	_, errOut, code = runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "1ns", "--quiet")
+	if code != 0 || errOut != "" {
+		t.Errorf("--quiet should silence warnings; exit %d stderr %q", code, errOut)
+	}
+}
+
+func TestPnLQuietStillPrintsErrors(t *testing.T) {
+	// The snapshot-open error fires AFTER warnW is set to io.Discard, so a
+	// non-empty stderr here proves --quiet silences warnings, not errors
+	// (under --quiet, warnings are discarded, so stderr can only be the error).
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--snapshot", "/nonexistent/snap.age", "--quiet")
+	if code != 1 || errOut == "" {
+		t.Errorf("error must still print under --quiet; exit %d stderr %q", code, errOut)
+	}
+}

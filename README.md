@@ -183,7 +183,8 @@ period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_los
 Both query commands accept `--snapshot PATH` (overrides
 `MT5_PNL_SNAPSHOT`) and `--stale-after` (default `2h`) — when the
 snapshot is older than that, a warning goes to **stderr**, never stdout,
-so machine-output pipelines stay clean.
+so machine-output pipelines stay clean. Pass `--quiet` (`-q`) to silence
+warnings for scripted use; errors still print.
 
 ## How it works
 

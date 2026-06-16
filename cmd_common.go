@@ -71,7 +71,7 @@ func resolveAccounts(spec string, accounts []snapshot.AccountSnapshot) (map[int6
 	return out, nil
 }
 
-func loadSnapshot(pathFlag string, staleAfter time.Duration, stderr io.Writer, getPassphrase func() (string, error)) (*snapshot.Snapshot, error) {
+func loadSnapshot(pathFlag string, staleAfter time.Duration, warnW io.Writer, getPassphrase func() (string, error)) (*snapshot.Snapshot, error) {
 	path, err := resolveSnapshotPath(pathFlag, os.Getenv)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func loadSnapshot(pathFlag string, staleAfter time.Duration, stderr io.Writer, g
 	if err != nil {
 		return nil, err
 	}
-	warnIfStale(stderr, snap.GeneratedAt, staleAfter, time.Now())
+	warnIfStale(warnW, snap.GeneratedAt, staleAfter, time.Now())
 	return snap, nil
 }
 
