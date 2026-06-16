@@ -44,6 +44,8 @@ agents.
   never corrupt a pipeline. An agent like Claude Code can turn *"show me
   monthly P&L for Q1"* into
   `mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month --format json`.
+  Colour is auto-disabled when output is piped or redirected, so pipelines
+  stay clean without any extra flags.
 - **Secrets stay in the keychain.** The decryption passphrase lives in
   the OS keychain only — there is deliberately no env var or flag for it.
 
@@ -167,6 +169,14 @@ period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_los
   - `--format table|json|csv` (default `table`). CSV is header + rows only (no summary
     block) — the spreadsheet/import path. The table summary footer shows the
     account currency when all in-scope accounts use the same one (e.g. `Total P&L: 10.00 USD`).
+  - `--color auto|always|never` (default `auto`): colourise P&L cells and
+    the summary total by sign (green for profit, red for loss). `auto` enables
+    colour only when writing to an interactive terminal and honours the
+    `NO_COLOR` and `TERM=dumb` environment conventions; output is never
+    coloured when piped or redirected. `always` forces ANSI codes regardless;
+    `never` disables them unconditionally. On Windows the terminal must already
+    have virtual-terminal processing enabled (Windows Terminal does; older
+    `cmd.exe` may not).
   - **Mixed currencies.** If the accounts in scope span more than one
     currency, combined `ALL` rows and the summary are suppressed (`n/a` in
     tables, `null` in JSON, omitted from CSV) and a warning goes to

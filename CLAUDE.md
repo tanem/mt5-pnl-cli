@@ -30,8 +30,9 @@ pre-commit run --all-files    # run the gitleaks hook manually
   win nor loss.
 - `internal/secrets` — keychain via zalando/go-keyring, service
   `mt5-pnl-cli`, account `encryption-passphrase`.
-- `internal/render` — tabwriter tables, JSON and CSV; all display
-  rounding here. `pnl`/`accounts` take `--format table|json|csv`
+- `internal/render` — fixed-width tables (manual writer; ANSI colour
+  applied after width padding so it never skews alignment), JSON and CSV;
+  all display rounding here. `pnl`/`accounts` take `--format table|json|csv`
   (default `table`).
 - `internal/snaptest` — test-only fixture builder (encrypts JSON the way
   the exporter does; low scrypt work factor for speed).
@@ -56,6 +57,7 @@ pre-commit run --all-files    # run the gitleaks hook manually
   accounts in scope span more than one, combined `ALL` rows and the
   summary are suppressed (`n/a`/`null`/omitted) with a stderr warning.
 - **`--quiet`/`-q`** silences stderr warnings (staleness, mixed-currency); errors still print.
+- **`--color`** (pnl only): auto/always/never; auto needs a `*os.File` TTY and honours `NO_COLOR`/`TERM=dumb`.
 - Dependencies are Renovate-managed; don't hand-bump pinned actions or
   module versions.
 

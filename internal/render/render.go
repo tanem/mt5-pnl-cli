@@ -71,7 +71,9 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 			}
 		}
 		pnlText := fmt.Sprintf("%.2f", r.PnL)
-		pnlTone := signTone(r.PnL)
+		// Tone from the displayed (rounded) value so a cell that reads 0.00
+		// is treated as breakeven (no colour), matching the win/loss rule.
+		pnlTone := signTone(round(r.PnL, 2))
 		if mixed && combined {
 			pnlText, pnlTone = "n/a", toneNone
 		}
@@ -90,7 +92,7 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 	grossProfit := fmt.Sprintf("%.2f", sum.GrossProfit)
 	grossLoss := fmt.Sprintf("%.2f", sum.GrossLoss)
 	profitFactor := fmtPtr(sum.ProfitFactor, "%.2f")
-	totalTone := signTone(sum.TotalPnL)
+	totalTone := signTone(round(sum.TotalPnL, 2))
 	if mixed {
 		totalPnL, grossProfit, grossLoss, profitFactor = "n/a", "n/a", "n/a", "n/a"
 		totalTone = toneNone

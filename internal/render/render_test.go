@@ -251,3 +251,36 @@ func TestPnLTableNoCurrencyWhenUnset(t *testing.T) {
 		t.Errorf("no currency expected when unset:\n%s", buf.String())
 	}
 }
+
+func TestPnLTableColorBySign(t *testing.T) {
+	signed := []aggregate.Row{
+		{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, Trades: 1, Wins: 1},
+		{Period: "2026-01-12", Account: ptr(int64(111)), PnL: -3.0, Trades: 1, Losses: 1},
+	}
+	var on, off bytes.Buffer
+	if err := render.PnLTable(&on, signed, sum, labels, false, render.TableOpts{Color: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := render.PnLTable(&off, signed, sum, labels, false, render.TableOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(on.String(), "\x1b[32m") || !strings.Contains(on.String(), "\x1b[31m") {
+		t.Errorf("colour on: expected green and red codes:\n%q", on.String())
+	}
+	if strings.Contains(off.String(), "\x1b[") {
+		t.Errorf("colour off: expected no ANSI codes:\n%q", off.String())
+	}
+}
+
+func TestPnLTableBreakevenNotColoured(t *testing.T) {
+	// 0.004 rounds to 0.00 on display, so it is breakeven and must not be
+	// tinted even with colour enabled (tone follows the displayed value).
+	be := []aggregate.Row{{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 0.004, Trades: 1}}
+	var buf bytes.Buffer
+	if err := render.PnLTable(&buf, be, aggregate.Summary{}, labels, false, render.TableOpts{Color: true}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "\x1b[") {
+		t.Errorf("breakeven (displayed 0.00) must not be coloured:\n%q", buf.String())
+	}
+}

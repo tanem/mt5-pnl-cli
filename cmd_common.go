@@ -13,6 +13,7 @@ import (
 
 	"github.com/tanem/mt5-pnl-cli/internal/aggregate"
 	"github.com/tanem/mt5-pnl-cli/internal/snapshot"
+	"golang.org/x/term"
 )
 
 func resolveSnapshotPath(flagVal string, getenv func(string) string) (string, error) {
@@ -119,6 +120,26 @@ func currenciesInScope(accounts []snapshot.AccountSnapshot, filter map[int64]boo
 	}
 	sort.Strings(out)
 	return out
+}
+
+// resolveColor decides whether to emit ANSI colour. always/never are absolute;
+// auto enables colour only for an interactive terminal that has not opted out
+// via NO_COLOR or TERM=dumb. w is the real output stream: colour is auto-off
+// whenever it is not a *os.File TTY (pipes, files, test buffers), which keeps
+// machine-consumed output clean.
+func resolveColor(mode string, w io.Writer, getenv func(string) string) bool {
+	switch mode {
+	case "always":
+		return true
+	case "never":
+		return false
+	default: // "auto"
+		if getenv("NO_COLOR") != "" || getenv("TERM") == "dumb" {
+			return false
+		}
+		f, ok := w.(*os.File)
+		return ok && term.IsTerminal(int(f.Fd()))
+	}
 }
 
 // resolveFormat validates the --format value. The legacy --json alias has been

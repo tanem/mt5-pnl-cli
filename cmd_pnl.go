@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -16,16 +17,17 @@ const pnlHelp = `Usage: mt5-pnl-cli pnl [flags]
 Show P&L over a date range, grouped per period and account.
 
 Flags:
-  --last Nd|Nw|Nm|Ny       relative range ending today (default 30d)
-  --from YYYY-MM-DD         start date (UTC)
-  --to YYYY-MM-DD           end date (UTC); defaults to today
-  --by day|week|month       grouping (default week; weeks start Monday)
-  --accounts "A,B"          filter by account label (default: all)
-  --format table|json|csv   output format (default table)
-  --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
-  --stale-after DUR         staleness warning threshold (default 2h)
-  -q, --quiet               suppress warnings on stderr
-  -h, --help                show this help
+  --last Nd|Nw|Nm|Ny         relative range ending today (default 30d)
+  --from YYYY-MM-DD           start date (UTC)
+  --to YYYY-MM-DD             end date (UTC); defaults to today
+  --by day|week|month         grouping (default week; weeks start Monday)
+  --accounts "A,B"            filter by account label (default: all)
+  --format table|json|csv     output format (default table)
+  --color auto|always|never   colourise P&L by sign (default auto)
+  --snapshot PATH             snapshot path (default: $MT5_PNL_SNAPSHOT)
+  --stale-after DUR           staleness warning threshold (default 2h)
+  -q, --quiet                 suppress warnings on stderr
+  -h, --help                  show this help
 
 Examples:
   mt5-pnl-cli pnl --last 7d
@@ -42,6 +44,7 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	by := fs.String("by", "week", "group results by: day, week or month")
 	accountsSpec := fs.String("accounts", "", "comma-separated account labels (default: all)")
 	formatFlag := fs.String("format", "table", "output format: table, json or csv")
+	colorMode := fs.String("color", "auto", "colour output: auto, always or never")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
 	var quiet bool
@@ -59,6 +62,10 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 
 	if *by != "day" && *by != "week" && *by != "month" {
 		fmt.Fprintf(stderr, "error: invalid --by %q: use day, week or month\n", *by)
+		return 1
+	}
+	if *colorMode != "auto" && *colorMode != "always" && *colorMode != "never" {
+		fmt.Fprintf(stderr, "error: invalid --color %q: use auto, always or never\n", *colorMode)
 		return 1
 	}
 	fromD, toD, err := resolveRange(*last, *from, *to, time.Now())
@@ -105,6 +112,7 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	if len(curs) == 1 {
 		opts.Currency = curs[0]
 	}
+	opts.Color = resolveColor(*colorMode, stdout, os.Getenv)
 
 	switch format {
 	case "json":

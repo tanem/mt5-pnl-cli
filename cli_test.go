@@ -135,6 +135,13 @@ func TestPnLInvalidBy(t *testing.T) {
 	}
 }
 
+func TestPnLInvalidColor(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--color", "bogus")
+	if code != 1 || !strings.Contains(errOut, "--color") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
 func TestPnLWrongPassphrase(t *testing.T) {
 	path := fixture(t)
 	_, errOut, code := runCLI(t, "wrong", "pnl", "--snapshot", path)
@@ -479,5 +486,23 @@ func TestPnLQuietStillPrintsErrors(t *testing.T) {
 	_, errOut, code := runCLI(t, "test-pass", "pnl", "--snapshot", "/nonexistent/snap.age", "--quiet")
 	if code != 1 || errOut == "" {
 		t.Errorf("error must still print under --quiet; exit %d stderr %q", code, errOut)
+	}
+}
+
+func TestPnLColorAlwaysForcesAnsi(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "876000h", "--color=always")
+	if code != 0 || !strings.Contains(out, "\x1b[") {
+		t.Errorf("--color=always should emit ANSI; exit %d out %q", code, out)
+	}
+}
+
+func TestPnLDefaultNoColorToBuffer(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "876000h")
+	if code != 0 || strings.Contains(out, "\x1b[") {
+		t.Errorf("default (non-TTY buffer) should be uncoloured; exit %d out %q", code, out)
 	}
 }
