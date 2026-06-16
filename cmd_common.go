@@ -121,23 +121,14 @@ func currenciesInScope(accounts []snapshot.AccountSnapshot, filter map[int64]boo
 	return out
 }
 
-// resolveFormat reconciles --format with the legacy --json alias. format is
-// the --format value; formatSet/jsonSet report whether each flag was given;
-// jsonVal is the --json bool. --json is treated as --format json; if both are
-// set and disagree it is an error.
-func resolveFormat(format string, formatSet, jsonSet, jsonVal bool) (string, error) {
-	f := format
-	if jsonSet && jsonVal {
-		if formatSet && f != "json" {
-			return "", fmt.Errorf("--json conflicts with --format %s; use one or the other", f)
-		}
-		f = "json"
-	}
-	switch f {
+// resolveFormat validates the --format value. The legacy --json alias has been
+// removed; --format is the single spelling.
+func resolveFormat(format string) (string, error) {
+	switch format {
 	case "table", "json", "csv":
-		return f, nil
+		return format, nil
 	default:
-		return "", fmt.Errorf("invalid --format %q: use table, json or csv", f)
+		return "", fmt.Errorf("invalid --format %q: use table, json or csv", format)
 	}
 }
 

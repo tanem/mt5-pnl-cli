@@ -39,7 +39,7 @@ agents.
   dashboard. The snapshot is yours; this binary reads it locally.
 - **One file in, answers out.** No config file. Point it at the snapshot
   once (env var or flag) and `mt5-pnl-cli pnl` just works.
-- **Agent- and script-friendly.** `--format json` (or the alias `--json`)
+- **Agent- and script-friendly.** `--format json`
   emits stable machine-readable output, and warnings go to stderr so they
   never corrupt a pipeline. An agent like Claude Code can turn *"show me
   monthly P&L for Q1"* into
@@ -97,7 +97,7 @@ LOGIN  LABEL       CURRENCY  BALANCE  EQUITY   LAST SUCCESS          LAST ERROR
 Snapshot generated: 2026-06-13T00:00:00Z
 ```
 
-`--format json` (or the alias `--json`) emits the same data for machines
+`--format json` emits the same data for machines
 (`"account": null` is the combined row):
 
 ```
@@ -164,8 +164,7 @@ period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_los
     UTC).
   - `--accounts "Trend EA,Scalper EA"` filters by account label
     (case-insensitive; default all).
-  - `--format table|json|csv` (default `table`). `--json` is a documented
-    alias for `--format json`. CSV is header + rows only (no summary
+  - `--format table|json|csv` (default `table`). CSV is header + rows only (no summary
     block) — the spreadsheet/import path.
   - **Mixed currencies.** If the accounts in scope span more than one
     currency, combined `ALL` rows and the summary are suppressed (`n/a` in
@@ -174,8 +173,7 @@ period,account_login,account_label,pnl,trades,wins,losses,gross_profit,gross_los
     `--accounts` to one currency for combined totals.
 - `accounts` — balances, equity and freshness per account, plus the
   snapshot's `generated_at`.
-  - `--format table|json|csv` (default `table`). `--json` is a documented
-    alias for `--format json`.
+  - `--format table|json|csv` (default `table`).
 - `set-passphrase` — store the snapshot decryption passphrase in the OS
   keychain (macOS Keychain / Windows Credential Manager / Linux Secret
   Service). Prompted twice, never echoed.

@@ -15,7 +15,6 @@ List accounts with balance, equity and freshness.
 
 Flags:
   --format table|json|csv   output format (default table)
-  --json                    alias for --format json
   --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
   --stale-after DUR         staleness warning threshold (default 2h)
   -h, --help                show this help
@@ -24,7 +23,6 @@ Flags:
 func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (string, error)) int {
 	fs := flag.NewFlagSet("accounts", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	asJSON := fs.Bool("json", false, "alias for --format json")
 	formatFlag := fs.String("format", "table", "output format: table, json or csv")
 	snapFlag := fs.String("snapshot", "", "snapshot path (default: $MT5_PNL_SNAPSHOT)")
 	staleAfter := fs.Duration("stale-after", 2*time.Hour, "staleness warning threshold")
@@ -32,9 +30,7 @@ func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (
 		return code
 	}
 
-	set := map[string]bool{}
-	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
-	format, err := resolveFormat(*formatFlag, set["format"], set["json"], *asJSON)
+	format, err := resolveFormat(*formatFlag)
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return 1

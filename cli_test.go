@@ -72,7 +72,7 @@ func TestPnLTableCommand(t *testing.T) {
 func TestPnLJSONCommand(t *testing.T) {
 	path := fixture(t)
 	out, _, code := runCLI(t, "test-pass",
-		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31", "--json")
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31", "--format", "json")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -306,27 +306,9 @@ func TestPnLFormatCSV(t *testing.T) {
 	}
 }
 
-func TestPnLFormatJSONMatchesJSONAlias(t *testing.T) {
-	path := fixture(t)
-	a, _, _ := runCLI(t, "test-pass", "pnl", "--snapshot", path,
-		"--from", "2026-01-01", "--to", "2026-01-31", "--format", "json", "--stale-after", "876000h")
-	b, _, _ := runCLI(t, "test-pass", "pnl", "--snapshot", path,
-		"--from", "2026-01-01", "--to", "2026-01-31", "--json", "--stale-after", "876000h")
-	if a != b || a == "" {
-		t.Errorf("--format json and --json should match;\nformat:\n%s\njson:\n%s", a, b)
-	}
-}
-
 func TestPnLInvalidFormat(t *testing.T) {
 	_, errOut, code := runCLI(t, "test-pass", "pnl", "--format", "yaml")
 	if code != 1 || !strings.Contains(errOut, "invalid --format") {
-		t.Errorf("exit %d, stderr %q", code, errOut)
-	}
-}
-
-func TestPnLFormatJSONConflict(t *testing.T) {
-	_, errOut, code := runCLI(t, "test-pass", "pnl", "--json", "--format", "csv")
-	if code != 1 || !strings.Contains(errOut, "conflicts") {
 		t.Errorf("exit %d, stderr %q", code, errOut)
 	}
 }
@@ -360,7 +342,7 @@ func TestPnLMixedCurrencyJSONNull(t *testing.T) {
 	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
 	out, _, code := runCLI(t, "test-pass",
 		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
-		"--by", "month", "--json", "--stale-after", "876000h")
+		"--by", "month", "--format", "json", "--stale-after", "876000h")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -395,17 +377,10 @@ func TestAccountsInvalidFormat(t *testing.T) {
 	}
 }
 
-func TestAccountsFormatJSONConflict(t *testing.T) {
-	_, errOut, code := runCLI(t, "test-pass", "accounts", "--json", "--format", "csv")
-	if code != 1 || !strings.Contains(errOut, "conflicts") {
-		t.Errorf("exit %d, stderr %q", code, errOut)
-	}
-}
-
 func TestAccountsJSONCommand(t *testing.T) {
 	path := fixture(t)
 	out, _, code := runCLI(t, "test-pass",
-		"accounts", "--snapshot", path, "--json", "--stale-after", "876000h")
+		"accounts", "--snapshot", path, "--format", "json", "--stale-after", "876000h")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
