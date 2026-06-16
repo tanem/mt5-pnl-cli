@@ -18,6 +18,10 @@ Flags:
   --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
   --stale-after DUR         staleness warning threshold (default 2h)
   -h, --help                show this help
+
+Examples:
+  mt5-pnl-cli accounts
+  mt5-pnl-cli accounts --format json
 `
 
 func cmdAccounts(args []string, stdout, stderr io.Writer, getPassphrase func() (string, error)) int {

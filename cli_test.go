@@ -431,7 +431,27 @@ func TestSetPassphraseRequiresTerminal(t *testing.T) {
 
 func TestHelpCommand(t *testing.T) {
 	out, errOut, code := runCLI(t, "", "--help")
-	if code != 0 || !strings.Contains(out, "Usage") || errOut != "" {
-		t.Errorf("exit %d, stdout %q, stderr %q; want 0 + usage on stdout, empty stderr", code, out, errOut)
+	if code != 0 || !strings.Contains(out, "Usage") || !strings.Contains(out, "Examples:") || errOut != "" {
+		t.Errorf("exit %d, stdout %q, stderr %q; want 0 + usage + examples on stdout, empty stderr", code, out, errOut)
+	}
+}
+
+func TestPnLHelpShowsExamples(t *testing.T) {
+	out, _, code := runCLI(t, "", "pnl", "-h")
+	if code != 0 || !strings.Contains(out, "Examples:") {
+		t.Errorf("exit %d; pnl help should show Examples:\n%s", code, out)
+	}
+	if !strings.Contains(out, "mt5-pnl-cli pnl --from") {
+		t.Errorf("pnl help should show a worked example:\n%s", out)
+	}
+}
+
+func TestAccountsHelpShowsExamples(t *testing.T) {
+	out, _, code := runCLI(t, "", "accounts", "--help")
+	if code != 0 || !strings.Contains(out, "Examples:") {
+		t.Errorf("exit %d; accounts help should show Examples:\n%s", code, out)
+	}
+	if !strings.Contains(out, "mt5-pnl-cli accounts --format") {
+		t.Errorf("accounts help should show a worked example:\n%s", out)
 	}
 }

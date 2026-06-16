@@ -56,5 +56,9 @@ Usage:
 The snapshot path comes from --snapshot or the MT5_PNL_SNAPSHOT environment
 variable. The decryption passphrase comes from the OS keychain; store it
 once with set-passphrase.
+
+Examples:
+  mt5-pnl-cli pnl --last 30d
+  mt5-pnl-cli accounts --format json
 `)
 }

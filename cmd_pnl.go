@@ -25,6 +25,11 @@ Flags:
   --snapshot PATH           snapshot path (default: $MT5_PNL_SNAPSHOT)
   --stale-after DUR         staleness warning threshold (default 2h)
   -h, --help                show this help
+
+Examples:
+  mt5-pnl-cli pnl --last 7d
+  mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month
+  mt5-pnl-cli pnl --by month --format csv > pnl.csv
 `
 
 func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (string, error)) int {
