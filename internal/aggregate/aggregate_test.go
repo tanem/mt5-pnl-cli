@@ -115,4 +115,34 @@ func TestEmpty(t *testing.T) {
 	if sum.WinRatePct != nil || sum.ProfitFactor != nil {
 		t.Errorf("want nil win rate and profit factor, got %+v", sum)
 	}
+	if sum.Expectancy != nil || sum.AvgWin != nil || sum.AvgLoss != nil ||
+		sum.LargestWin != nil || sum.LargestLoss != nil {
+		t.Errorf("want nil metrics on empty input, got %+v", sum)
+	}
+}
+
+func TestSummaryMetrics(t *testing.T) {
+	_, sum := aggregate.Aggregate(deals, aggregate.Options{
+		From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week",
+	})
+	// 4 trades, total P&L 10.0 -> expectancy 2.5
+	if sum.Expectancy == nil || *sum.Expectancy != 2.5 {
+		t.Errorf("expectancy = %v, want 2.5", sum.Expectancy)
+	}
+	// gross profit 14.0 over 2 wins -> avg win 7.0
+	if sum.AvgWin == nil || *sum.AvgWin != 7.0 {
+		t.Errorf("avg win = %v, want 7.0", sum.AvgWin)
+	}
+	// gross loss -4.0 over 1 loss -> avg loss -4.0
+	if sum.AvgLoss == nil || *sum.AvgLoss != -4.0 {
+		t.Errorf("avg loss = %v, want -4.0", sum.AvgLoss)
+	}
+	// winning deals net 9.0 and 5.0 -> largest win 9.0
+	if sum.LargestWin == nil || *sum.LargestWin != 9.0 {
+		t.Errorf("largest win = %v, want 9.0", sum.LargestWin)
+	}
+	// only losing deal net -4.0 -> largest loss -4.0
+	if sum.LargestLoss == nil || *sum.LargestLoss != -4.0 {
+		t.Errorf("largest loss = %v, want -4.0", sum.LargestLoss)
+	}
 }

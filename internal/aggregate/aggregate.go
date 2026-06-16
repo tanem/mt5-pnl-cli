@@ -42,6 +42,11 @@ type Summary struct {
 	TotalTrades  int
 	WinRatePct   *float64 // nil when no trades
 	ProfitFactor *float64 // nil when no gross loss
+	Expectancy   *float64 // TotalPnL / TotalTrades; nil when no trades
+	AvgWin       *float64 // GrossProfit / wins; nil when no wins
+	AvgLoss      *float64 // GrossLoss / losses (negative); nil when no losses
+	LargestWin   *float64 // max single-deal net among wins; nil when no wins
+	LargestLoss  *float64 // min single-deal net among losses (negative); nil when no losses
 	GrossProfit  float64
 	GrossLoss    float64
 	TradeProfit  float64
@@ -57,6 +62,7 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 	}
 	buckets := map[key]*Row{}
 	accountSet := map[int64]bool{}
+	var largestWin, largestLoss *float64
 
 	for _, d := range deals {
 		if opts.Accounts != nil && !opts.Accounts[d.Account] {
@@ -84,9 +90,17 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		case net > 0:
 			b.Wins++
 			b.GrossProfit += net
+			if largestWin == nil || net > *largestWin {
+				v := net
+				largestWin = &v
+			}
 		case net < 0:
 			b.Losses++
 			b.GrossLoss += net
+			if largestLoss == nil || net < *largestLoss {
+				v := net
+				largestLoss = &v
+			}
 		}
 		accountSet[d.Account] = true
 	}
@@ -108,7 +122,7 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 
 	var rows []Row
 	var sum Summary
-	totalWins := 0
+	totalWins, totalLosses := 0, 0
 	for _, p := range periods {
 		combined := Row{Period: p}
 		for _, a := range accounts {
@@ -136,17 +150,30 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		sum.Fee += combined.Fee
 		sum.TotalTrades += combined.Trades
 		totalWins += combined.Wins
+		totalLosses += combined.Losses
 		sum.GrossProfit += combined.GrossProfit
 		sum.GrossLoss += combined.GrossLoss
 	}
 	if sum.TotalTrades > 0 {
 		wr := float64(totalWins) / float64(sum.TotalTrades) * 100
 		sum.WinRatePct = &wr
+		e := sum.TotalPnL / float64(sum.TotalTrades)
+		sum.Expectancy = &e
 	}
 	if sum.GrossLoss != 0 {
 		pf := sum.GrossProfit / math.Abs(sum.GrossLoss)
 		sum.ProfitFactor = &pf
 	}
+	if totalWins > 0 {
+		aw := sum.GrossProfit / float64(totalWins)
+		sum.AvgWin = &aw
+	}
+	if totalLosses > 0 {
+		al := sum.GrossLoss / float64(totalLosses)
+		sum.AvgLoss = &al
+	}
+	sum.LargestWin = largestWin
+	sum.LargestLoss = largestLoss
 	return rows, sum
 }
 
