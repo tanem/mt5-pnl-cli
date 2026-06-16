@@ -88,26 +88,46 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 		return err
 	}
 
-	totalPnL := fmt.Sprintf("%.2f", sum.TotalPnL)
-	grossProfit := fmt.Sprintf("%.2f", sum.GrossProfit)
-	grossLoss := fmt.Sprintf("%.2f", sum.GrossLoss)
-	profitFactor := fmtPtr(sum.ProfitFactor, "%.2f")
-	totalTone := signTone(round(sum.TotalPnL, 2))
+	na := func(s string) string {
+		if mixed {
+			return "n/a"
+		}
+		return s
+	}
+	netStr := na(fmt.Sprintf("%.2f", sum.TotalPnL))
+	netTone := signTone(round(sum.TotalPnL, 2))
 	if mixed {
-		totalPnL, grossProfit, grossLoss, profitFactor = "n/a", "n/a", "n/a", "n/a"
-		totalTone = toneNone
+		netTone = toneNone
+	} else if opts.Currency != "" {
+		netStr += " " + opts.Currency
 	}
-	// Currency is shown only for single-currency scope; under mixed currency
-	// the total is "n/a", so a currency tag would be incoherent ("n/a USD").
-	cur := ""
-	if opts.Currency != "" && !mixed {
-		cur = " " + opts.Currency
+	perf := []kv{
+		{"Trades", strconv.Itoa(sum.TotalTrades), toneNone},
+		{"Win rate", fmtPtr(sum.WinRatePct, "%.1f%%"), toneNone},
+		{"Profit factor", na(fmtPtr(sum.ProfitFactor, "%.2f")), toneNone},
+		{"Expectancy", na(fmtPtr(sum.Expectancy, "%.2f")), toneNone},
+		{"Avg win", na(fmtPtr(sum.AvgWin, "%.2f")), toneNone},
+		{"Avg loss", na(fmtPtr(sum.AvgLoss, "%.2f")), toneNone},
+		{"Largest win", na(fmtPtr(sum.LargestWin, "%.2f")), toneNone},
+		{"Largest loss", na(fmtPtr(sum.LargestLoss, "%.2f")), toneNone},
+		{"Max drawdown", na(fmtPtr(sum.MaxDrawdown, "%.2f")), toneNone},
+		{"Gross profit", na(fmt.Sprintf("%.2f", sum.GrossProfit)), toneNone},
+		{"Gross loss", na(fmt.Sprintf("%.2f", sum.GrossLoss)), toneNone},
 	}
-	_, err := fmt.Fprintf(w,
-		"\nTotal P&L: %s%s  Trades: %d  Win rate: %s  Profit factor: %s  Gross profit: %s  Gross loss: %s\n",
-		colorise(totalPnL, totalTone, opts.Color), cur, sum.TotalTrades,
-		fmtPtr(sum.WinRatePct, "%.1f%%"), profitFactor, grossProfit, grossLoss)
-	return err
+	breakdown := []kv{
+		{"Trade profit", na(fmt.Sprintf("%.2f", sum.TradeProfit)), toneNone},
+		{"Commission", na(fmt.Sprintf("%.2f", sum.Commission)), toneNone},
+		{"Swap", na(fmt.Sprintf("%.2f", sum.Swap)), toneNone},
+		{"Fee", na(fmt.Sprintf("%.2f", sum.Fee)), toneNone},
+		{"Net P&L", netStr, netTone},
+	}
+	if _, err := io.WriteString(w, "\n"); err != nil {
+		return err
+	}
+	return writeKV(w, []kvGroup{
+		{"Performance", perf},
+		{"P&L breakdown", breakdown},
+	}, opts.Color)
 }
 
 type pnlRow struct {

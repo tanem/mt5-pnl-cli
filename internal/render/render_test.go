@@ -56,7 +56,7 @@ func TestPnLTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{"PERIOD", "Trend EA", "ALL", "5.00", "-4.00", "50.0%", "2.25"} {
+	for _, want := range []string{"PERIOD", "Trend EA", "ALL", "Summary", "Net P&L", "Max drawdown", "5.00", "-4.00", "50.0%", "2.25"} {
 		if !bytes.Contains([]byte(out), []byte(want)) {
 			t.Errorf("table missing %q:\n%s", want, out)
 		}
@@ -251,11 +251,14 @@ func TestPnLTableMixedNA(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "Total P&L: n/a") {
-		t.Errorf("mixed table should show n/a total:\n%s", out)
+	if !strings.Contains(out, "Net P&L        n/a") {
+		t.Errorf("mixed summary should show n/a net P&L:\n%s", out)
 	}
-	if !strings.Contains(out, "Trades: 2") {
-		t.Errorf("mixed table should keep trade count:\n%s", out)
+	if !strings.Contains(out, "Trade profit   n/a") {
+		t.Errorf("mixed summary should suppress the P&L breakdown:\n%s", out)
+	}
+	if !strings.Contains(out, "Win rate       50.0%") {
+		t.Errorf("mixed summary should keep the count-based win rate:\n%s", out)
 	}
 }
 
@@ -264,8 +267,8 @@ func TestPnLTableCurrencyFooter(t *testing.T) {
 	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{Currency: "USD"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "Total P&L: 5.00 USD") {
-		t.Errorf("summary should show the currency:\n%s", buf.String())
+	if !strings.Contains(buf.String(), "Net P&L        5.00 USD") {
+		t.Errorf("summary should show the currency on the net line:\n%s", buf.String())
 	}
 }
 

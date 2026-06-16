@@ -25,3 +25,28 @@ func TestWriteTableRightAligns(t *testing.T) {
 		t.Errorf("got:\n%q\nwant:\n%q", got, want)
 	}
 }
+
+func TestWriteKVAligns(t *testing.T) {
+	var buf bytes.Buffer
+	err := writeKV(&buf, []kvGroup{
+		{"Performance", []kv{
+			{"Trades", "4", toneNone},
+			{"Profit factor", "3.50", toneNone},
+		}},
+		{"P&L breakdown", []kv{
+			{"Net P&L", "10.00", tonePos},
+		}},
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Summary\n" +
+		"  Performance\n" +
+		"    Trades         4\n" +
+		"    Profit factor  3.50\n" +
+		"  P&L breakdown\n" +
+		"    Net P&L        10.00\n"
+	if buf.String() != want {
+		t.Errorf("writeKV output:\ngot:\n%q\nwant:\n%q", buf.String(), want)
+	}
+}

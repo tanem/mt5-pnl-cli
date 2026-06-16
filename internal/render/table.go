@@ -91,3 +91,46 @@ func colorise(s string, t tone, color bool) string {
 	}
 	return code + s + ansiReset
 }
+
+type kv struct {
+	label string
+	value string
+	tone  tone
+}
+
+type kvGroup struct {
+	title string
+	items []kv
+}
+
+// writeKV renders grouped label/value pairs beneath a "Summary" heading. Group
+// titles are indented two spaces and their items four; values align in one
+// column across all groups (width from the widest label). Tone colour, when
+// color is true, wraps the value only and is applied after the label is padded,
+// so it never skews the label column.
+func writeKV(w io.Writer, groups []kvGroup, color bool) error {
+	width := 0
+	for _, g := range groups {
+		for _, it := range g.items {
+			if len(it.label) > width {
+				width = len(it.label)
+			}
+		}
+	}
+	var b strings.Builder
+	b.WriteString("Summary\n")
+	for _, g := range groups {
+		b.WriteString("  ")
+		b.WriteString(g.title)
+		b.WriteByte('\n')
+		for _, it := range g.items {
+			b.WriteString("    ")
+			b.WriteString(pad(it.label, width, false))
+			b.WriteString("  ")
+			b.WriteString(colorise(it.value, it.tone, color))
+			b.WriteByte('\n')
+		}
+	}
+	_, err := io.WriteString(w, b.String())
+	return err
+}

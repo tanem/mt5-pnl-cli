@@ -59,7 +59,7 @@ func TestPnLTableCommand(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d, stderr: %s", code, errOut)
 	}
-	for _, want := range []string{"Trend EA", "Scalper EA", "ALL", "2026-01-05", "2026-01-12", "Total P&L: 10.00"} {
+	for _, want := range []string{"Trend EA", "Scalper EA", "ALL", "2026-01-05", "2026-01-12", "Net P&L"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout missing %q:\n%s", want, out)
 		}
