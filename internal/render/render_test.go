@@ -86,13 +86,14 @@ func TestPnLTableNilSummaryFields(t *testing.T) {
 
 func TestPnLJSON(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLJSON(&buf, rows, sum, false); err != nil {
+	if err := render.PnLJSON(&buf, rows, sum, "week", false); err != nil {
 		t.Fatal(err)
 	}
 	want := `{
   "rows": [
     {
-      "period": "2026-01-05",
+      "group": "2026-01-05",
+      "group_by": "week",
       "account": 111,
       "pnl": 5,
       "trade_profit": 6,
@@ -106,7 +107,8 @@ func TestPnLJSON(t *testing.T) {
       "gross_loss": -4
     },
     {
-      "period": "2026-01-05",
+      "group": "2026-01-05",
+      "group_by": "week",
       "account": null,
       "pnl": 5,
       "trade_profit": 6,
@@ -219,7 +221,7 @@ func TestAccountsCSV(t *testing.T) {
 
 func TestPnLJSONMixedNulls(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLJSON(&buf, rows, sum, true); err != nil {
+	if err := render.PnLJSON(&buf, rows, sum, "week", true); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()

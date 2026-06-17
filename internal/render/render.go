@@ -131,7 +131,8 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 }
 
 type pnlRow struct {
-	Period      string   `json:"period"`
+	Group       string   `json:"group"`
+	GroupBy     string   `json:"group_by"`
 	Account     *int64   `json:"account"`
 	PnL         *float64 `json:"pnl"`
 	TradeProfit *float64 `json:"trade_profit"`
@@ -168,14 +169,14 @@ type pnlSummary struct {
 // combined (account == nil) rows and the summary have their currency-valued
 // fields set to null (they would sum across currencies); counts and the
 // count-based win rate are kept.
-func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, mixed bool) error {
+func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, groupBy string, mixed bool) error {
 	out := struct {
 		Rows    []pnlRow   `json:"rows"`
 		Summary pnlSummary `json:"summary"`
 	}{Rows: make([]pnlRow, 0, len(rows))}
 	for _, r := range rows {
 		row := pnlRow{
-			Period: r.Group, Account: r.Account,
+			Group: r.Group, GroupBy: groupBy, Account: r.Account,
 			PnL:         numPtr(round(r.PnL, 2)),
 			TradeProfit: numPtr(round(r.TradeProfit, 2)),
 			Commission:  numPtr(round(r.Commission, 2)),
