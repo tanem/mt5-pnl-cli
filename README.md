@@ -38,8 +38,9 @@ agents.
 
 - **Self-hosted.** Your trading data never touches a third-party
   dashboard. The snapshot is yours; this binary reads it locally.
-- **One file in, answers out.** No config file. Point it at the snapshot
-  once (env var or flag) and `mt5-pnl-cli pnl` just works.
+- **One file in, answers out.** Point it at the snapshot once via the
+  `MT5_PNL_SNAPSHOT` env var or `--snapshot` flag, then run
+  `mt5-pnl-cli pnl`.
 - **Agent- and script-friendly.** `--format json`
   emits stable machine-readable output, and warnings go to stderr so they
   never corrupt a pipeline. An agent like Claude Code can turn *"show me
