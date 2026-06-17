@@ -20,7 +20,9 @@ Flags:
   --last Nd|Nw|Nm|Ny         relative range ending today (default 30d)
   --from YYYY-MM-DD           start date (UTC)
   --to YYYY-MM-DD             end date (UTC); defaults to today
-  --by day|week|month         grouping (default week; weeks start Monday)
+  --by day|week|month|symbol|magic
+                              grouping (default week; weeks start Monday).
+                              symbol/magic aggregate across accounts.
   --accounts "A,B"            filter by account label (default: all)
   --format table|json|csv     output format (default table)
   --color auto|always|never   colourise P&L by sign (default auto)
@@ -33,6 +35,7 @@ Examples:
   mt5-pnl-cli pnl --last 7d
   mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month
   mt5-pnl-cli pnl --by month --format csv > pnl.csv
+  mt5-pnl-cli pnl --from 2026-01-01 --to 2026-12-31 --by symbol
 `
 
 func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (string, error)) int {
@@ -60,8 +63,10 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 		return 1
 	}
 
-	if *by != "day" && *by != "week" && *by != "month" {
-		fmt.Fprintf(stderr, "error: invalid --by %q: use day, week or month\n", *by)
+	switch *by {
+	case "day", "week", "month", "symbol", "magic":
+	default:
+		fmt.Fprintf(stderr, "error: invalid --by %q: use day, week, month, symbol or magic\n", *by)
 		return 1
 	}
 	if *colorMode != "auto" && *colorMode != "always" && *colorMode != "never" {
@@ -100,8 +105,17 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 		labels[a.Login] = a.Label
 	}
 
-	curs := currenciesInScope(snap.Accounts, filter, rows)
+	contributing := aggregate.AccountsInScope(snap.ClosedDeals, aggregate.Options{
+		From: fromD, To: toD, Accounts: filter,
+	})
+	curs := currenciesInScope(snap.Accounts, filter, contributing)
 	mixed := len(curs) > 1
+	if mixed && (*by == "symbol" || *by == "magic") {
+		fmt.Fprintf(stderr,
+			"error: --by %s aggregates across accounts but they span multiple currencies (%s); narrow --accounts to one currency\n",
+			*by, strings.Join(curs, ", "))
+		return 1
+	}
 	if mixed {
 		fmt.Fprintf(warnW,
 			"warning: accounts span multiple currencies (%s); combined totals are suppressed — narrow --accounts to one currency\n",

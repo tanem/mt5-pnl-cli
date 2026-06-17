@@ -300,6 +300,53 @@ const mixedFixtureJSON = `{
   "cash_flows": []
 }`
 
+func mixedFixture(t *testing.T) string {
+	t.Helper()
+	return snaptest.Write(t, mixedFixtureJSON, "test-pass")
+}
+
+func TestPnLBySymbol(t *testing.T) {
+	path := fixture(t)
+	out, errOut, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "symbol", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d, stderr: %s", code, errOut)
+	}
+	if !strings.Contains(out, "SYMBOL") || !strings.Contains(out, "EURUSD") {
+		t.Errorf("by-symbol output should list symbols:\n%s", out)
+	}
+	if strings.Contains(out, "ACCOUNT") {
+		t.Errorf("by-symbol output should not have an ACCOUNT column:\n%s", out)
+	}
+}
+
+func TestPnLByMagicJSONGroupBy(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "magic", "--format", "json", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, `"group_by": "magic"`) {
+		t.Errorf("by-magic JSON should carry group_by magic:\n%s", out)
+	}
+}
+
+func TestPnLBySymbolMixedCurrencyRefuses(t *testing.T) {
+	path := mixedFixture(t)
+	_, errOut, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "symbol", "--stale-after", "876000h")
+	if code != 1 {
+		t.Fatalf("exit %d, want 1; stderr: %s", code, errOut)
+	}
+	if !strings.Contains(errOut, "narrow --accounts") {
+		t.Errorf("refusal should guide narrowing accounts:\n%s", errOut)
+	}
+}
+
 func TestPnLFormatCSV(t *testing.T) {
 	path := fixture(t)
 	out, _, code := runCLI(t, "test-pass",
