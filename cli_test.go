@@ -308,7 +308,7 @@ func TestPnLFormatCSV(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
-	if !strings.HasPrefix(out, "period,account_login,account_label,pnl,") {
+	if !strings.HasPrefix(out, "group,group_by,account_login,account_label,pnl,") {
 		t.Errorf("want CSV header first, got:\n%s", out)
 	}
 }

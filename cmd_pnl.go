@@ -118,7 +118,7 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	case "json":
 		err = render.PnLJSON(stdout, rows, sum, *by, mixed)
 	case "csv":
-		err = render.PnLCSV(stdout, rows, labels, mixed)
+		err = render.PnLCSV(stdout, rows, labels, *by, mixed)
 	default:
 		err = render.PnLTable(stdout, rows, sum, labels, mixed, opts)
 	}

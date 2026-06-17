@@ -263,10 +263,11 @@ func money(x float64) string {
 // PnLCSV writes per-period rows as CSV (header + rows, no summary). Under
 // mixed currency the combined ALL rows are omitted, since they would sum
 // across currencies; per-account rows (each single-currency) still print.
-func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bool) error {
+func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, groupBy string, mixed bool) error {
+	dimension := groupBy == "symbol" || groupBy == "magic"
 	cw := csv.NewWriter(w)
 	if err := cw.Write([]string{
-		"period", "account_login", "account_label",
+		"group", "group_by", "account_login", "account_label",
 		"pnl", "trade_profit", "commission", "swap", "fee",
 		"trades", "wins", "losses", "gross_profit", "gross_loss",
 	}); err != nil {
@@ -274,11 +275,16 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 	}
 	for _, r := range rows {
 		combined := r.Account == nil
-		if mixed && combined {
+		if mixed && combined && !dimension {
 			continue
 		}
-		login, label := "", "ALL"
-		if !combined {
+		login, label := "", ""
+		switch {
+		case dimension:
+			// symbol/magic rows have no account dimension: both columns empty.
+		case combined:
+			label = "ALL"
+		default:
 			login = strconv.FormatInt(*r.Account, 10)
 			label = labels[*r.Account]
 			if label == "" {
@@ -286,7 +292,7 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 			}
 		}
 		if err := cw.Write([]string{
-			r.Group, login, label,
+			r.Group, groupBy, login, label,
 			money(r.PnL), money(r.TradeProfit), money(r.Commission), money(r.Swap), money(r.Fee),
 			strconv.Itoa(r.Trades), strconv.Itoa(r.Wins), strconv.Itoa(r.Losses),
 			money(r.GrossProfit), money(r.GrossLoss),

@@ -182,26 +182,43 @@ func TestAccountsJSON(t *testing.T) {
 
 func TestPnLCSV(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLCSV(&buf, rows, labels, false); err != nil {
+	if err := render.PnLCSV(&buf, rows, labels, "week", false); err != nil {
 		t.Fatal(err)
 	}
-	want := "period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss\n" +
-		"2026-01-05,111,Trend EA,5.00,6.00,-0.50,-0.50,0.00,2,1,1,9.00,-4.00\n" +
-		"2026-01-05,,ALL,5.00,6.00,-0.50,-0.50,0.00,2,1,1,9.00,-4.00\n"
+	want := "group,group_by,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss\n" +
+		"2026-01-05,week,111,Trend EA,5.00,6.00,-0.50,-0.50,0.00,2,1,1,9.00,-4.00\n" +
+		"2026-01-05,week,,ALL,5.00,6.00,-0.50,-0.50,0.00,2,1,1,9.00,-4.00\n"
 	if buf.String() != want {
 		t.Errorf("CSV mismatch:\ngot:\n%s\nwant:\n%s", buf.String(), want)
 	}
 }
 
+func TestPnLCSVSymbolEmptyAccountColumns(t *testing.T) {
+	var buf bytes.Buffer
+	symRows := []aggregate.Row{
+		{Group: "EURUSD", Account: nil, PnL: 3.0, TradeProfit: 3.0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 4.0, GrossLoss: -1.0},
+		{Group: "XAUUSD", Account: nil, PnL: 10.0, TradeProfit: 10.0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 10.0, GrossLoss: 0},
+	}
+	if err := render.PnLCSV(&buf, symRows, map[int64]string{}, "symbol", false); err != nil {
+		t.Fatal(err)
+	}
+	want := "group,group_by,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss\n" +
+		"EURUSD,symbol,,,3.00,3.00,0.00,0.00,0.00,2,1,1,4.00,-1.00\n" +
+		"XAUUSD,symbol,,,10.00,10.00,0.00,0.00,0.00,1,1,0,10.00,0.00\n"
+	if buf.String() != want {
+		t.Errorf("symbol CSV:\ngot:\n%q\nwant:\n%q", buf.String(), want)
+	}
+}
+
 func TestPnLCSVMixedOmitsCombined(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLCSV(&buf, rows, labels, true); err != nil {
+	if err := render.PnLCSV(&buf, rows, labels, "week", true); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(buf.String(), "ALL") {
 		t.Errorf("mixed CSV should omit the combined ALL row:\n%s", buf.String())
 	}
-	if !strings.Contains(buf.String(), "2026-01-05,111,Trend EA") {
+	if !strings.Contains(buf.String(), "2026-01-05,week,111,Trend EA") {
 		t.Errorf("mixed CSV should keep per-account rows:\n%s", buf.String())
 	}
 }
