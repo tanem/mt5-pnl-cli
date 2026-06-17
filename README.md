@@ -27,6 +27,7 @@ agents.
 - [Quick start](#quick-start)
 - [Demo](#demo)
 - [Commands](#commands)
+- [Notes](#notes)
 - [How it works](#how-it-works)
 - [Schema compatibility](#schema-compatibility)
 - [Threat model](#threat-model)
@@ -201,84 +202,108 @@ group,group_by,account_login,account_label,pnl,trade_profit,commission,swap,fee,
 
 ## Commands
 
-- `pnl` — P&L over a date range.
-  - Range: `--last Nd|Nw|Nm|Ny` (default `30d`; months and years are
-    calendar-accurate) or `--from YYYY-MM-DD [--to YYYY-MM-DD]` (`--to`
-    defaults to today). `--last` runs from N units ago through today
-    inclusive, so `30d` covers 31 calendar days. Dates, `--last` and
-    "today" are all interpreted in **UTC**, and each deal is bucketed by
-    its UTC day — so from a far-east timezone (e.g., UTC+12), the UTC day can
-    differ from your local day near midnight.
-  - **Deal times and broker months.** Each deal's `time` is the value MT5
-    records — on most brokers the server's local clock stored as a Unix
-    timestamp. The CLI buckets by the UTC day/week/month of that value, so
-    monthly and weekly figures line up with what your broker statement
-    shows; there is no timezone skew to correct for.
-  - `--by day|week|month|symbol|magic` (default `week`; weeks start
-    Monday). Time cuts (`day`/`week`/`month`) group per period and account,
-    with a combined `ALL` row per period. `symbol` and `magic` instead
-    aggregate **across all in-scope accounts**, one row per symbol or magic
-    number, with no per-account or `ALL` row — the first column becomes
-    `SYMBOL`/`MAGIC` and the totals live in the summary. `magic` groups by
-    the raw MT5 magic number (commonly one per strategy/EA). Because a
-    `symbol`/`magic` cut sums across accounts, it **refuses** when the
-    in-scope accounts span more than one currency — narrow `--accounts` to
-    a single currency.
-  - `--accounts "Trend EA,Scalper EA"` filters by account label
-    (case-insensitive; default all).
-  - `--format table|json|csv` (default `table`). The table footer is a
-    **Summary** block in two groups — *Performance* (trades, win rate,
-    profit factor, expectancy, average and largest win/loss, max drawdown,
-    gross profit/loss) and *P&L breakdown* (trade profit, commission, swap,
-    fee, and the net). JSON carries the same fields per row and in the
-    summary; CSV is header + rows only (no summary), with the component
-    columns `pnl,trade_profit,commission,swap,fee` so a `--by month` export
-    drops straight into a spreadsheet or tax register. The summary footer
-    shows the account currency when all in-scope accounts share one
-    (e.g. `Net P&L  10.00 USD`). Every cut emits the same JSON/CSV shape:
-    rows carry `group` (the period date, symbol, or magic) and `group_by`
-    (the `--by` value); `account` is the login for per-account time rows and
-    `null` for the combined time row and for every symbol/magic row.
-  - **P&L components.** Net P&L is `trade_profit + commission + swap + fee`.
-    Keeping the parts separate shows where a result came from — trading
-    versus broker costs — which the net alone hides. Many tax regimes treat
-    realised trade profit as income and commission/swap/fee as deductible
-    expenses, so `pnl --by month --format csv` gives per-account, per-month
-    component columns ready for a return; figures are always in the account
-    currency (no home-currency conversion — see Mixed currencies).
-  - **Max drawdown** is the largest peak-to-trough decline of the
-    *realised* P&L curve over the selected deals (ordered by time,
-    accumulated from zero), reported signed-negative. It is **not**
-    account-equity drawdown — it excludes deposits, open positions and
-    starting balance, so it will not match a broker's equity-drawdown
-    figure.
-  - `--color auto|always|never` (default `auto`): colourise P&L cells and
-    the summary total by sign (green for profit, red for loss). `auto` enables
-    colour only when writing to an interactive terminal and honours the
-    `NO_COLOR` and `TERM=dumb` environment conventions; output is never
-    coloured when piped or redirected. `always` forces ANSI codes regardless;
-    `never` disables them unconditionally. On Windows the terminal must already
-    have virtual-terminal processing enabled (Windows Terminal does; older
-    `cmd.exe` may not).
-  - **Mixed currencies.** If the accounts in scope span more than one
-    currency, combined `ALL` rows and the summary are suppressed (`n/a` in
-    tables, `null` in JSON, omitted from CSV) and a warning goes to
-    stderr — the tool never silently sums across currencies. Narrow
-    `--accounts` to one currency for combined totals.
-- `accounts` — balances, equity and freshness per account, plus the
-  snapshot's `generated_at`.
-  - `--format table|json|csv` (default `table`).
-- `set-passphrase` — store the snapshot decryption passphrase in the OS
-  keychain (macOS Keychain / Windows Credential Manager / Linux Secret
-  Service). Prompted twice, never echoed.
-- `version` — binary version and supported snapshot schema (also
-  available as `mt5-pnl-cli --version`).
+### `pnl` — P&L over a date range
 
-Both query commands accept `--snapshot PATH` (overrides
-`MT5_PNL_SNAPSHOT`) and `--stale-after` (default `2h`) — when the
-snapshot is older than that, a warning goes to **stderr**, never stdout,
-so machine-output pipelines stay clean. Pass `--quiet` (`-q`) to silence
-warnings for scripted use; errors still print.
+- `--last Nd|Nw|Nm|Ny` (default `30d`)<br>
+  Range ending today, inclusive — N units ago through today, so `30d`
+  covers 31 calendar days. Months and years are calendar-accurate.
+- `--from YYYY-MM-DD [--to YYYY-MM-DD]`<br>
+  Explicit range; `--to` defaults to today. Use instead of `--last`.
+- `--by day|week|month|symbol|magic` (default `week`, weeks start Monday)<br>
+  Time cuts (`day`/`week`/`month`) group per period and account, with a
+  combined `ALL` row per period. `symbol`/`magic` aggregate across all
+  in-scope accounts — one row per symbol or magic number, no per-account
+  or `ALL` row, first column `SYMBOL`/`MAGIC`. (`magic` is the raw MT5
+  magic number, commonly one per strategy/EA.) See
+  [Mixed currencies](#mixed-currencies).
+- `--accounts "Trend EA,Scalper EA"` (default all)<br>
+  Filter by account label (case-insensitive).
+- `--format table|json|csv` (default `table`)<br>
+  `table` prints rows plus a Summary block; `json` carries the same
+  fields per row and in the summary; `csv` is header + rows only (no
+  summary). See [Output shape](#output-shape).
+- `--color auto|always|never` (default `auto`)<br>
+  Colour P&L cells and the summary total by sign. `auto` colours only on
+  an interactive terminal and honours `NO_COLOR`/`TERM=dumb`; output is
+  never coloured when piped or redirected. `always` forces ANSI codes;
+  `never` disables them. On Windows the terminal must have
+  virtual-terminal processing enabled (Windows Terminal does; older
+  `cmd.exe` may not).
+
+Dates, `--last` and "today" are all interpreted in UTC.
+
+### `accounts` — balances, equity and freshness
+
+Per-account balances, equity and freshness, plus the snapshot's
+`generated_at`. Takes `--format table|json|csv` (default `table`).
+
+### `set-passphrase`
+
+Store the snapshot decryption passphrase in the OS keychain (macOS
+Keychain / Windows Credential Manager / Linux Secret Service). Prompted
+twice, never echoed.
+
+### `version`
+
+Binary version and supported snapshot schema. Also available as
+`mt5-pnl-cli --version`.
+
+Both query commands (`pnl`, `accounts`) also accept `--snapshot PATH`
+(overrides `MT5_PNL_SNAPSHOT`) and `--stale-after` (default `2h`) — when
+the snapshot is older, a warning goes to stderr, never stdout, so
+machine-output pipelines stay clean. `--quiet` (`-q`) silences warnings;
+errors still print.
+
+## Notes
+
+### Dates and bucketing
+
+Each deal's `time` is the value MT5 records — on most brokers the
+server's local clock stored as a Unix timestamp. The CLI buckets by the
+UTC day/week/month of that value, so weekly and monthly figures line up
+with what your broker statement shows; there is no timezone skew to
+correct for. One edge case: from a far-east timezone (e.g. UTC+12) the
+UTC day can differ from your local day near midnight.
+
+### P&L components
+
+Net P&L is `trade_profit + commission + swap + fee`, using MT5's native
+signs where commission, swap and fees are already negative for costs.
+Keeping the parts separate shows where a result came from — trading
+versus broker costs — which the net alone hides. Many tax regimes treat
+realised trade profit as income and commission/swap/fee as deductible
+expenses, so `pnl --by month --format csv` gives per-account, per-month
+component columns ready for a return. Figures are always in the account
+currency (no home-currency conversion — see
+[Mixed currencies](#mixed-currencies)).
+
+### Max drawdown
+
+The largest peak-to-trough decline of the *realised* P&L curve over the
+selected deals (ordered by time, accumulated from zero), reported
+signed-negative. It is **not** account-equity drawdown — it excludes
+deposits, open positions and starting balance, so it will not match a
+broker's equity-drawdown figure.
+
+### Mixed currencies
+
+The CLI never silently sums across currencies. If the accounts in scope
+span more than one, combined `ALL` rows and the summary are suppressed
+(`n/a` in tables, `null` in JSON, omitted from CSV) and a warning goes to
+stderr. A `symbol`/`magic` cut aggregates across accounts and has no
+per-account row to fall back on, so it refuses outright (exit 1). Narrow
+`--accounts` to one currency for combined totals.
+
+### Output shape
+
+Every `--by` cut emits the same JSON/CSV shape: rows carry `group` (the
+period date, symbol, or magic) and `group_by` (the `--by` value);
+`account` is the login for per-account time rows and `null` (JSON) or
+empty (CSV) for the combined time row and for every symbol/magic row. CSV
+component columns are `pnl,trade_profit,commission,swap,fee`, so a
+`--by month` export drops straight into a spreadsheet or tax register.
+The table summary footer shows the account currency when all in-scope
+accounts share one (e.g. `Net P&L  10.00 USD`).
 
 ## How it works
 
