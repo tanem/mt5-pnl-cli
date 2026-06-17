@@ -108,6 +108,20 @@ Summary
     Net P&L        10.00 USD
 ```
 
+`--by symbol` aggregates across accounts, one row per symbol:
+
+```
+$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-12-31 --by symbol
+SYMBOL    P&L  TRADES  WINS  LOSSES
+EURUSD   5.00       2     1       1
+XAUUSD  10.00       1     1       0
+
+Summary
+  Performance
+    Trades         3
+    ...
+```
+
 ```
 $ mt5-pnl-cli accounts
 LOGIN  LABEL       CURRENCY  BALANCE   EQUITY  LAST SUCCESS          LAST ERROR
@@ -125,7 +139,8 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
 {
   "rows": [
     {
-      "period": "2026-01-01",
+      "group": "2026-01-01",
+      "group_by": "month",
       "account": 111,
       "pnl": 10,
       "trade_profit": 13,
@@ -139,7 +154,8 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
       "gross_loss": -4
     },
     {
-      "period": "2026-01-01",
+      "group": "2026-01-01",
+      "group_by": "month",
       "account": null,
       "pnl": 10,
       "trade_profit": 13,
@@ -178,9 +194,9 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
 
 ```
 $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --format csv
-period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss
-2026-01-01,111,Trend EA,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
-2026-01-01,,ALL,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
+group,group_by,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss
+2026-01-01,month,111,Trend EA,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
+2026-01-01,month,,ALL,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
 ```
 
 ## Commands
@@ -198,8 +214,16 @@ period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,w
     timestamp. The CLI buckets by the UTC day/week/month of that value, so
     monthly and weekly figures line up with what your broker statement
     shows; there is no timezone skew to correct for.
-  - `--by day|week|month` (default `week`; weeks start Monday, dates are
-    UTC).
+  - `--by day|week|month|symbol|magic` (default `week`; weeks start
+    Monday). Time cuts (`day`/`week`/`month`) group per period and account,
+    with a combined `ALL` row per period. `symbol` and `magic` instead
+    aggregate **across all in-scope accounts**, one row per symbol or magic
+    number, with no per-account or `ALL` row — the first column becomes
+    `SYMBOL`/`MAGIC` and the totals live in the summary. `magic` groups by
+    the raw MT5 magic number (commonly one per strategy/EA). Because a
+    `symbol`/`magic` cut sums across accounts, it **refuses** when the
+    in-scope accounts span more than one currency — narrow `--accounts` to
+    a single currency.
   - `--accounts "Trend EA,Scalper EA"` filters by account label
     (case-insensitive; default all).
   - `--format table|json|csv` (default `table`). The table footer is a
@@ -211,7 +235,10 @@ period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,w
     columns `pnl,trade_profit,commission,swap,fee` so a `--by month` export
     drops straight into a spreadsheet or tax register. The summary footer
     shows the account currency when all in-scope accounts share one
-    (e.g. `Net P&L  10.00 USD`).
+    (e.g. `Net P&L  10.00 USD`). Every cut emits the same JSON/CSV shape:
+    rows carry `group` (the period date, symbol, or magic) and `group_by`
+    (the `--by` value); `account` is the login for per-account time rows and
+    `null` for the combined time row and for every symbol/magic row.
   - **P&L components.** Net P&L is `trade_profit + commission + swap + fee`.
     Keeping the parts separate shows where a result came from — trading
     versus broker costs — which the net alone hides. Many tax regimes treat
