@@ -7,6 +7,7 @@
 package aggregate
 
 import (
+	"cmp"
 	"math"
 	"slices"
 	"time"
@@ -26,6 +27,10 @@ type Row struct {
 	Period      string
 	Account     *int64
 	PnL         float64
+	TradeProfit float64
+	Commission  float64
+	Swap        float64
+	Fee         float64
 	Trades      int
 	Wins        int
 	Losses      int
@@ -38,8 +43,18 @@ type Summary struct {
 	TotalTrades  int
 	WinRatePct   *float64 // nil when no trades
 	ProfitFactor *float64 // nil when no gross loss
+	Expectancy   *float64 // TotalPnL / TotalTrades; nil when no trades
+	AvgWin       *float64 // GrossProfit / wins; nil when no wins
+	AvgLoss      *float64 // GrossLoss / losses (negative); nil when no losses
+	LargestWin   *float64 // max single-deal net among wins; nil when no wins
+	LargestLoss  *float64 // min single-deal net among losses (negative); nil when no losses
+	MaxDrawdown  *float64 // realised-P&L drawdown (<= 0); nil when no deals; 0 when never retraces
 	GrossProfit  float64
 	GrossLoss    float64
+	TradeProfit  float64
+	Commission   float64
+	Swap         float64
+	Fee          float64
 }
 
 func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
@@ -49,6 +64,13 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 	}
 	buckets := map[key]*Row{}
 	accountSet := map[int64]bool{}
+	var largestWin, largestLoss *float64
+
+	type timed struct {
+		time, timeMsc int64
+		net           float64
+	}
+	var inScope []timed
 
 	for _, d := range deals {
 		if opts.Accounts != nil && !opts.Accounts[d.Account] {
@@ -67,16 +89,29 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		}
 		net := d.Profit + d.Swap + d.Commission + d.Fee
 		b.PnL += net
+		b.TradeProfit += d.Profit
+		b.Commission += d.Commission
+		b.Swap += d.Swap
+		b.Fee += d.Fee
 		b.Trades++
 		switch {
 		case net > 0:
 			b.Wins++
 			b.GrossProfit += net
+			if largestWin == nil || net > *largestWin {
+				v := net
+				largestWin = &v
+			}
 		case net < 0:
 			b.Losses++
 			b.GrossLoss += net
+			if largestLoss == nil || net < *largestLoss {
+				v := net
+				largestLoss = &v
+			}
 		}
 		accountSet[d.Account] = true
+		inScope = append(inScope, timed{d.Time, d.TimeMsc, net})
 	}
 
 	periodSet := map[string]bool{}
@@ -96,7 +131,7 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 
 	var rows []Row
 	var sum Summary
-	totalWins := 0
+	totalWins, totalLosses := 0, 0
 	for _, p := range periods {
 		combined := Row{Period: p}
 		for _, a := range accounts {
@@ -106,6 +141,10 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 			}
 			rows = append(rows, *b)
 			combined.PnL += b.PnL
+			combined.TradeProfit += b.TradeProfit
+			combined.Commission += b.Commission
+			combined.Swap += b.Swap
+			combined.Fee += b.Fee
 			combined.Trades += b.Trades
 			combined.Wins += b.Wins
 			combined.Losses += b.Losses
@@ -114,18 +153,54 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		}
 		rows = append(rows, combined)
 		sum.TotalPnL += combined.PnL
+		sum.TradeProfit += combined.TradeProfit
+		sum.Commission += combined.Commission
+		sum.Swap += combined.Swap
+		sum.Fee += combined.Fee
 		sum.TotalTrades += combined.Trades
 		totalWins += combined.Wins
+		totalLosses += combined.Losses
 		sum.GrossProfit += combined.GrossProfit
 		sum.GrossLoss += combined.GrossLoss
 	}
 	if sum.TotalTrades > 0 {
 		wr := float64(totalWins) / float64(sum.TotalTrades) * 100
 		sum.WinRatePct = &wr
+		e := sum.TotalPnL / float64(sum.TotalTrades)
+		sum.Expectancy = &e
 	}
 	if sum.GrossLoss != 0 {
 		pf := sum.GrossProfit / math.Abs(sum.GrossLoss)
 		sum.ProfitFactor = &pf
+	}
+	if totalWins > 0 {
+		aw := sum.GrossProfit / float64(totalWins)
+		sum.AvgWin = &aw
+	}
+	if totalLosses > 0 {
+		al := sum.GrossLoss / float64(totalLosses)
+		sum.AvgLoss = &al
+	}
+	sum.LargestWin = largestWin
+	sum.LargestLoss = largestLoss
+	if len(inScope) > 0 {
+		slices.SortFunc(inScope, func(a, b timed) int {
+			if a.time != b.time {
+				return cmp.Compare(a.time, b.time)
+			}
+			return cmp.Compare(a.timeMsc, b.timeMsc)
+		})
+		var cum, peak, maxDD float64 // all start at 0
+		for _, d := range inScope {
+			cum += d.net
+			if cum > peak {
+				peak = cum
+			}
+			if dd := cum - peak; dd < maxDD {
+				maxDD = dd
+			}
+		}
+		sum.MaxDrawdown = &maxDD
 	}
 	return rows, sum
 }

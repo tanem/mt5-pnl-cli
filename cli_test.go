@@ -59,7 +59,7 @@ func TestPnLTableCommand(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d, stderr: %s", code, errOut)
 	}
-	for _, want := range []string{"Trend EA", "Scalper EA", "ALL", "2026-01-05", "2026-01-12", "Total P&L: 10.00"} {
+	for _, want := range []string{"Trend EA", "Scalper EA", "ALL", "2026-01-05", "2026-01-12", "Net P&L"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout missing %q:\n%s", want, out)
 		}
@@ -72,7 +72,7 @@ func TestPnLTableCommand(t *testing.T) {
 func TestPnLJSONCommand(t *testing.T) {
 	path := fixture(t)
 	out, _, code := runCLI(t, "test-pass",
-		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31", "--json")
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31", "--format", "json")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -131,6 +131,13 @@ func TestPnLStalenessWarning(t *testing.T) {
 func TestPnLInvalidBy(t *testing.T) {
 	_, errOut, code := runCLI(t, "test-pass", "pnl", "--by", "fortnight")
 	if code != 1 || !strings.Contains(errOut, "--by") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestPnLInvalidColor(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--color", "bogus")
+	if code != 1 || !strings.Contains(errOut, "--color") {
 		t.Errorf("exit %d, stderr %q", code, errOut)
 	}
 }
@@ -208,6 +215,13 @@ func TestVersionCommand(t *testing.T) {
 	}
 }
 
+func TestVersionFlag(t *testing.T) {
+	out, _, code := runCLI(t, "", "--version")
+	if code != 0 || !strings.Contains(out, "mt5-pnl-cli") || !strings.Contains(out, "schema 1.0") {
+		t.Errorf("exit %d, out %q", code, out)
+	}
+}
+
 func TestUnknownCommand(t *testing.T) {
 	_, errOut, code := runCLI(t, "", "bogus")
 	if code != 1 || !strings.Contains(errOut, "Usage") {
@@ -222,10 +236,158 @@ func TestNoCommand(t *testing.T) {
 	}
 }
 
+func TestPnLHelpToStdout(t *testing.T) {
+	out, errOut, code := runCLI(t, "", "pnl", "-h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, "Usage: mt5-pnl-cli pnl") {
+		t.Errorf("help should be on stdout, got %q", out)
+	}
+	if errOut != "" {
+		t.Errorf("help should not write stderr, got %q", errOut)
+	}
+}
+
+func TestPnLParseErrorToStderr(t *testing.T) {
+	out, errOut, code := runCLI(t, "", "pnl", "--nope")
+	if code != 1 {
+		t.Fatalf("exit %d", code)
+	}
+	if out != "" {
+		t.Errorf("parse error should not write stdout, got %q", out)
+	}
+	if !strings.Contains(errOut, "not defined") {
+		t.Errorf("want flag error on stderr, got %q", errOut)
+	}
+}
+
+func TestAccountsHelpToStdout(t *testing.T) {
+	out, _, code := runCLI(t, "", "accounts", "--help")
+	if code != 0 || !strings.Contains(out, "Usage: mt5-pnl-cli accounts") {
+		t.Errorf("exit %d, out %q", code, out)
+	}
+}
+
+func TestTopLevelHelpMentionsFormat(t *testing.T) {
+	out, _, code := runCLI(t, "", "help")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, "--format") {
+		t.Errorf("top-level help should mention --format:\n%s", out)
+	}
+}
+
+const mixedFixtureJSON = `{
+  "schema_version": "1.0",
+  "generated_at": "2026-06-13T00:00:00Z",
+  "accounts": [
+    {"login": 111, "label": "USD Acct", "currency": "USD", "balance": 1000.0,
+     "equity": 1000.0, "last_success_at": "2026-06-13T00:00:00Z", "last_error": null},
+    {"login": 333, "label": "EUR Acct", "currency": "EUR", "balance": 800.0,
+     "equity": 800.0, "last_success_at": "2026-06-13T00:00:00Z", "last_error": null}
+  ],
+  "closed_deals": [
+    {"account": 111, "time": 1767607200, "profit": 10.0, "swap": 0.0, "commission": 0.0, "fee": 0.0,
+     "ticket": 1, "order": 1, "position_id": 1, "time_msc": 0, "type": 0, "entry": 1, "reason": 0,
+     "magic": 0, "volume": 0.1, "price": 1.0, "symbol": "EURUSD", "comment": "", "external_id": ""},
+    {"account": 333, "time": 1767607200, "profit": 7.0, "swap": 0.0, "commission": 0.0, "fee": 0.0,
+     "ticket": 2, "order": 2, "position_id": 2, "time_msc": 0, "type": 0, "entry": 1, "reason": 0,
+     "magic": 0, "volume": 0.1, "price": 1.0, "symbol": "EURUSD", "comment": "", "external_id": ""}
+  ],
+  "open_positions": [],
+  "cash_flows": []
+}`
+
+func TestPnLFormatCSV(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--format", "csv", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.HasPrefix(out, "period,account_login,account_label,pnl,") {
+		t.Errorf("want CSV header first, got:\n%s", out)
+	}
+}
+
+func TestPnLInvalidFormat(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--format", "yaml")
+	if code != 1 || !strings.Contains(errOut, "invalid --format") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestAccountsFormatCSV(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass", "accounts", "--snapshot", path,
+		"--format", "csv", "--stale-after", "876000h")
+	if code != 0 || !strings.HasPrefix(out, "login,label,currency,") {
+		t.Errorf("exit %d, want accounts CSV header, got:\n%s", code, out)
+	}
+}
+
+func TestPnLMixedCurrencyTableSuppresses(t *testing.T) {
+	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
+	out, errOut, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %s", code, errOut)
+	}
+	if !strings.Contains(errOut, "multiple currencies") {
+		t.Errorf("want mixed-currency warning on stderr, got %q", errOut)
+	}
+	if !strings.Contains(out, "n/a") {
+		t.Errorf("want suppressed combined total (n/a) in table, got:\n%s", out)
+	}
+}
+
+func TestPnLMixedCurrencyJSONNull(t *testing.T) {
+	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
+	out, _, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--format", "json", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, `"total_pnl": null`) {
+		t.Errorf("want null total under mixed currency, got:\n%s", out)
+	}
+}
+
+func TestPnLMixedCurrencyCSVOmitsCombined(t *testing.T) {
+	path := snaptest.Write(t, mixedFixtureJSON, "test-pass")
+	out, errOut, code := runCLI(t, "test-pass",
+		"pnl", "--snapshot", path, "--from", "2026-01-01", "--to", "2026-01-31",
+		"--by", "month", "--format", "csv", "--stale-after", "876000h")
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %s", code, errOut)
+	}
+	if strings.Contains(out, "ALL") {
+		t.Errorf("mixed CSV should omit the combined ALL row:\n%s", out)
+	}
+	if !strings.Contains(out, "USD Acct") || !strings.Contains(out, "EUR Acct") {
+		t.Errorf("mixed CSV should keep per-account rows:\n%s", out)
+	}
+	if !strings.Contains(errOut, "multiple currencies") {
+		t.Errorf("want mixed-currency warning on stderr, got %q", errOut)
+	}
+}
+
+func TestAccountsInvalidFormat(t *testing.T) {
+	_, errOut, code := runCLI(t, "test-pass", "accounts", "--format", "yaml")
+	if code != 1 || !strings.Contains(errOut, "invalid --format") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
 func TestAccountsJSONCommand(t *testing.T) {
 	path := fixture(t)
 	out, _, code := runCLI(t, "test-pass",
-		"accounts", "--snapshot", path, "--json", "--stale-after", "876000h")
+		"accounts", "--snapshot", path, "--format", "json", "--stale-after", "876000h")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -276,7 +438,71 @@ func TestSetPassphraseRequiresTerminal(t *testing.T) {
 
 func TestHelpCommand(t *testing.T) {
 	out, errOut, code := runCLI(t, "", "--help")
-	if code != 0 || !strings.Contains(out, "Usage") || errOut != "" {
-		t.Errorf("exit %d, stdout %q, stderr %q; want 0 + usage on stdout, empty stderr", code, out, errOut)
+	if code != 0 || !strings.Contains(out, "Usage") || !strings.Contains(out, "Examples:") || errOut != "" {
+		t.Errorf("exit %d, stdout %q, stderr %q; want 0 + usage + examples on stdout, empty stderr", code, out, errOut)
+	}
+}
+
+func TestPnLHelpShowsExamples(t *testing.T) {
+	out, _, code := runCLI(t, "", "pnl", "-h")
+	if code != 0 || !strings.Contains(out, "Examples:") {
+		t.Errorf("exit %d; pnl help should show Examples:\n%s", code, out)
+	}
+	if !strings.Contains(out, "mt5-pnl-cli pnl --from") {
+		t.Errorf("pnl help should show a worked example:\n%s", out)
+	}
+}
+
+func TestAccountsHelpShowsExamples(t *testing.T) {
+	out, _, code := runCLI(t, "", "accounts", "--help")
+	if code != 0 || !strings.Contains(out, "Examples:") {
+		t.Errorf("exit %d; accounts help should show Examples:\n%s", code, out)
+	}
+	if !strings.Contains(out, "mt5-pnl-cli accounts --format") {
+		t.Errorf("accounts help should show a worked example:\n%s", out)
+	}
+}
+
+func TestPnLQuietSuppressesWarnings(t *testing.T) {
+	path := fixture(t)
+	// 1ns threshold makes the snapshot stale regardless of the wall clock.
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "1ns")
+	if code != 0 || !strings.Contains(errOut, "warning") {
+		t.Fatalf("precondition: expected a staleness warning, exit %d stderr %q", code, errOut)
+	}
+	// With --quiet stderr is clean.
+	_, errOut, code = runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "1ns", "--quiet")
+	if code != 0 || errOut != "" {
+		t.Errorf("--quiet should silence warnings; exit %d stderr %q", code, errOut)
+	}
+}
+
+func TestPnLQuietStillPrintsErrors(t *testing.T) {
+	// The snapshot-open error fires AFTER warnW is set to io.Discard, so a
+	// non-empty stderr here proves --quiet silences warnings, not errors
+	// (under --quiet, warnings are discarded, so stderr can only be the error).
+	_, errOut, code := runCLI(t, "test-pass", "pnl", "--snapshot", "/nonexistent/snap.age", "--quiet")
+	if code != 1 || errOut == "" {
+		t.Errorf("error must still print under --quiet; exit %d stderr %q", code, errOut)
+	}
+}
+
+func TestPnLColorAlwaysForcesAnsi(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "876000h", "--color=always")
+	if code != 0 || !strings.Contains(out, "\x1b[") {
+		t.Errorf("--color=always should emit ANSI; exit %d out %q", code, out)
+	}
+}
+
+func TestPnLDefaultNoColorToBuffer(t *testing.T) {
+	path := fixture(t)
+	out, _, code := runCLI(t, "test-pass", "pnl", "--snapshot", path,
+		"--from", "2026-01-01", "--to", "2026-01-31", "--stale-after", "876000h")
+	if code != 0 || strings.Contains(out, "\x1b[") {
+		t.Errorf("default (non-TTY buffer) should be uncoloured; exit %d out %q", code, out)
 	}
 }

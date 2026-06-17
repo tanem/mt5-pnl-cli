@@ -1,5 +1,5 @@
-LOGIN  LABEL       CURRENCY  BALANCE  EQUITY   LAST SUCCESS          LAST ERROR
+LOGIN  LABEL       CURRENCY  BALANCE   EQUITY  LAST SUCCESS          LAST ERROR
 111    Trend EA    USD       1000.00  1010.50  2026-06-13T00:00:00Z  -
-222    Scalper EA  USD       500.00   500.00   -                     login failed
+222    Scalper EA  USD        500.00   500.00  -                     login failed
 
 Snapshot generated: 2026-06-13T00:00:00Z

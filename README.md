@@ -39,10 +39,13 @@ agents.
   dashboard. The snapshot is yours; this binary reads it locally.
 - **One file in, answers out.** No config file. Point it at the snapshot
   once (env var or flag) and `mt5-pnl-cli pnl` just works.
-- **Agent- and script-friendly.** `--json` emits stable machine-readable
-  output, and warnings go to stderr so they never corrupt a pipeline. An
-  agent like Claude Code can turn *"show me monthly P&L for Q1"* into
-  `mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month --json`.
+- **Agent- and script-friendly.** `--format json`
+  emits stable machine-readable output, and warnings go to stderr so they
+  never corrupt a pipeline. An agent like Claude Code can turn *"show me
+  monthly P&L for Q1"* into
+  `mt5-pnl-cli pnl --from 2026-01-01 --to 2026-03-31 --by month --format json`.
+  Colour is auto-disabled when output is piped or redirected, so pipelines
+  stay clean without any extra flags.
 - **Secrets stay in the keychain.** The decryption passphrase lives in
   the OS keychain only — there is deliberately no env var or flag for it.
 
@@ -73,40 +76,62 @@ mt5-pnl-cli accounts     # balances, equity, freshness
 
 ## Demo
 
-Per-account and combined (`ALL`) rows per period, with a summary line:
+Per-account and combined (`ALL`) rows per period, with a summary block:
 
 ```
 $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31
-PERIOD      ACCOUNT     P&L   TRADES  WINS  LOSSES
-2026-01-05  Trend EA    5.00  2       1     1
-2026-01-05  Scalper EA  0.00  1       0     0
-2026-01-05  ALL         5.00  3       1     1
-2026-01-12  Trend EA    5.00  1       1     0
-2026-01-12  ALL         5.00  1       1     0
+PERIOD      ACCOUNT      P&L  TRADES  WINS  LOSSES
+2026-01-05  Trend EA    5.00       2     1       1
+2026-01-05  Scalper EA  0.00       1     0       0
+2026-01-05  ALL         5.00       3     1       1
+2026-01-12  Trend EA    5.00       1     1       0
+2026-01-12  ALL         5.00       1     1       0
 
-Total P&L: 10.00  Trades: 4  Win rate: 50.0%  Profit factor: 3.50  Gross profit: 14.00  Gross loss: -4.00
+Summary
+  Performance
+    Trades         4
+    Win rate       50.0%
+    Profit factor  3.50
+    Expectancy     2.50
+    Avg win        7.00
+    Avg loss       -4.00
+    Largest win    9.00
+    Largest loss   -4.00
+    Max drawdown   -4.00
+    Gross profit   14.00
+    Gross loss     -4.00
+  P&L breakdown
+    Trade profit   13.00
+    Commission     -2.00
+    Swap           -1.00
+    Fee            0.00
+    Net P&L        10.00 USD
 ```
 
 ```
 $ mt5-pnl-cli accounts
-LOGIN  LABEL       CURRENCY  BALANCE  EQUITY   LAST SUCCESS          LAST ERROR
+LOGIN  LABEL       CURRENCY  BALANCE   EQUITY  LAST SUCCESS          LAST ERROR
 111    Trend EA    USD       1000.00  1010.50  2026-06-13T00:00:00Z  -
-222    Scalper EA  USD       500.00   500.00   -                     login failed
+222    Scalper EA  USD        500.00   500.00  -                     login failed
 
 Snapshot generated: 2026-06-13T00:00:00Z
 ```
 
-`--json` emits the same data for machines (`"account": null` is the
-combined row):
+`--format json` emits the same data for machines
+(`"account": null` is the combined row):
 
 ```
-$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --json
+$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --format json
 {
   "rows": [
     {
       "period": "2026-01-01",
       "account": 111,
       "pnl": 10,
+      "trade_profit": 13,
+      "commission": -2,
+      "swap": -1,
+      "fee": 0,
       "trades": 3,
       "wins": 2,
       "losses": 1,
@@ -117,6 +142,10 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
       "period": "2026-01-01",
       "account": null,
       "pnl": 10,
+      "trade_profit": 13,
+      "commission": -2,
+      "swap": -1,
+      "fee": 0,
       "trades": 3,
       "wins": 2,
       "losses": 1,
@@ -129,10 +158,29 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
     "total_trades": 3,
     "win_rate_pct": 66.7,
     "profit_factor": 3.5,
+    "expectancy": 3.33,
+    "avg_win": 7,
+    "avg_loss": -4,
+    "largest_win": 9,
+    "largest_loss": -4,
+    "max_drawdown": -4,
     "gross_profit": 14,
-    "gross_loss": -4
+    "gross_loss": -4,
+    "trade_profit": 13,
+    "commission": -2,
+    "swap": -1,
+    "fee": 0
   }
 }
+```
+
+`--format csv` emits header + rows for spreadsheets (no summary):
+
+```
+$ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend EA" --format csv
+period,account_login,account_label,pnl,trade_profit,commission,swap,fee,trades,wins,losses,gross_profit,gross_loss
+2026-01-01,111,Trend EA,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
+2026-01-01,,ALL,10.00,13.00,-2.00,-1.00,0.00,3,2,1,14.00,-4.00
 ```
 
 ## Commands
@@ -145,22 +193,65 @@ $ mt5-pnl-cli pnl --from 2026-01-01 --to 2026-01-31 --by month --accounts "Trend
     "today" are all interpreted in **UTC**, and each deal is bucketed by
     its UTC day — so from a far-east timezone (e.g., UTC+12), the UTC day can
     differ from your local day near midnight.
+  - **Deal times and broker months.** Each deal's `time` is the value MT5
+    records — on most brokers the server's local clock stored as a Unix
+    timestamp. The CLI buckets by the UTC day/week/month of that value, so
+    monthly and weekly figures line up with what your broker statement
+    shows; there is no timezone skew to correct for.
   - `--by day|week|month` (default `week`; weeks start Monday, dates are
     UTC).
   - `--accounts "Trend EA,Scalper EA"` filters by account label
     (case-insensitive; default all).
-  - `--json` for machine output.
+  - `--format table|json|csv` (default `table`). The table footer is a
+    **Summary** block in two groups — *Performance* (trades, win rate,
+    profit factor, expectancy, average and largest win/loss, max drawdown,
+    gross profit/loss) and *P&L breakdown* (trade profit, commission, swap,
+    fee, and the net). JSON carries the same fields per row and in the
+    summary; CSV is header + rows only (no summary), with the component
+    columns `pnl,trade_profit,commission,swap,fee` so a `--by month` export
+    drops straight into a spreadsheet or tax register. The summary footer
+    shows the account currency when all in-scope accounts share one
+    (e.g. `Net P&L  10.00 USD`).
+  - **P&L components.** Net P&L is `trade_profit + commission + swap + fee`.
+    Keeping the parts separate shows where a result came from — trading
+    versus broker costs — which the net alone hides. Many tax regimes treat
+    realised trade profit as income and commission/swap/fee as deductible
+    expenses, so `pnl --by month --format csv` gives per-account, per-month
+    component columns ready for a return; figures are always in the account
+    currency (no home-currency conversion — see Mixed currencies).
+  - **Max drawdown** is the largest peak-to-trough decline of the
+    *realised* P&L curve over the selected deals (ordered by time,
+    accumulated from zero), reported signed-negative. It is **not**
+    account-equity drawdown — it excludes deposits, open positions and
+    starting balance, so it will not match a broker's equity-drawdown
+    figure.
+  - `--color auto|always|never` (default `auto`): colourise P&L cells and
+    the summary total by sign (green for profit, red for loss). `auto` enables
+    colour only when writing to an interactive terminal and honours the
+    `NO_COLOR` and `TERM=dumb` environment conventions; output is never
+    coloured when piped or redirected. `always` forces ANSI codes regardless;
+    `never` disables them unconditionally. On Windows the terminal must already
+    have virtual-terminal processing enabled (Windows Terminal does; older
+    `cmd.exe` may not).
+  - **Mixed currencies.** If the accounts in scope span more than one
+    currency, combined `ALL` rows and the summary are suppressed (`n/a` in
+    tables, `null` in JSON, omitted from CSV) and a warning goes to
+    stderr — the tool never silently sums across currencies. Narrow
+    `--accounts` to one currency for combined totals.
 - `accounts` — balances, equity and freshness per account, plus the
   snapshot's `generated_at`.
+  - `--format table|json|csv` (default `table`).
 - `set-passphrase` — store the snapshot decryption passphrase in the OS
   keychain (macOS Keychain / Windows Credential Manager / Linux Secret
   Service). Prompted twice, never echoed.
-- `version` — binary version and supported snapshot schema.
+- `version` — binary version and supported snapshot schema (also
+  available as `mt5-pnl-cli --version`).
 
 Both query commands accept `--snapshot PATH` (overrides
 `MT5_PNL_SNAPSHOT`) and `--stale-after` (default `2h`) — when the
 snapshot is older than that, a warning goes to **stderr**, never stdout,
-so `--json` pipelines stay clean.
+so machine-output pipelines stay clean. Pass `--quiet` (`-q`) to silence
+warnings for scripted use; errors still print.
 
 ## How it works
 

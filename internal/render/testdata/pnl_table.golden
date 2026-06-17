@@ -1,5 +1,23 @@
-PERIOD      ACCOUNT   P&L   TRADES  WINS  LOSSES
-2026-01-05  Trend EA  5.00  2       1     1
-2026-01-05  ALL       5.00  2       1     1
+PERIOD      ACCOUNT    P&L  TRADES  WINS  LOSSES
+2026-01-05  Trend EA  5.00       2     1       1
+2026-01-05  ALL       5.00       2     1       1
 
-Total P&L: 5.00  Trades: 2  Win rate: 50.0%  Profit factor: 2.25  Gross profit: 9.00  Gross loss: -4.00
+Summary
+  Performance
+    Trades         2
+    Win rate       50.0%
+    Profit factor  2.25
+    Expectancy     2.50
+    Avg win        9.00
+    Avg loss       -4.00
+    Largest win    9.00
+    Largest loss   -4.00
+    Max drawdown   -4.00
+    Gross profit   9.00
+    Gross loss     -4.00
+  P&L breakdown
+    Trade profit   6.00
+    Commission     -0.50
+    Swap           -0.50
+    Fee            0.00
+    Net P&L        5.00

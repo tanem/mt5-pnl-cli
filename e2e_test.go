@@ -31,6 +31,16 @@ func TestBinarySmoke(t *testing.T) {
 		t.Errorf("version output: %q", got)
 	}
 
+	// --version is an alias of the version subcommand, so it resolves the
+	// same way; assert the stable surrounding format, not a literal version.
+	out, err = exec.Command(bin, "--version").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(out); !strings.HasPrefix(got, "mt5-pnl-cli ") || !strings.Contains(got, "(schema 1.0)") {
+		t.Errorf("--version output: %q", got)
+	}
+
 	// pnl with no --snapshot and no env var fails before touching the keychain.
 	cmd := exec.Command(bin, "pnl")
 	cmd.Env = envWithout("MT5_PNL_SNAPSHOT")

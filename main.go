@@ -29,8 +29,8 @@ func run(args []string, stdout, stderr io.Writer, getPassphrase func() (string, 
 		return cmdAccounts(args[1:], stdout, stderr, getPassphrase)
 	case "set-passphrase":
 		return cmdSetPassphrase(stderr)
-	case "version":
-		fmt.Fprintf(stdout, "mt5-pnl-cli %s (schema %d.%d)\n", resolveVersion(), snapshot.SupportedMajor, snapshot.SupportedMinor)
+	case "version", "--version":
+		fmt.Fprintf(stdout, "%s (schema %d.%d)\n", formatVersion(resolveVersion(), commit, date), snapshot.SupportedMajor, snapshot.SupportedMinor)
 		return 0
 	case "help", "-h", "--help":
 		usage(stdout)
@@ -47,14 +47,18 @@ func usage(w io.Writer) {
 
 Usage:
   mt5-pnl-cli pnl [--last 30d | --from YYYY-MM-DD [--to YYYY-MM-DD]]
-                  [--by day|week|month] [--accounts "A,B"] [--json]
-                  [--snapshot PATH] [--stale-after 2h]
-  mt5-pnl-cli accounts [--json] [--snapshot PATH] [--stale-after 2h]
+                  [--by day|week|month] [--accounts "A,B"]
+                  [--format table|json|csv] [--snapshot PATH] [--stale-after 2h]
+  mt5-pnl-cli accounts [--format table|json|csv] [--snapshot PATH] [--stale-after 2h]
   mt5-pnl-cli set-passphrase
-  mt5-pnl-cli version
+  mt5-pnl-cli version   (or --version)
 
 The snapshot path comes from --snapshot or the MT5_PNL_SNAPSHOT environment
 variable. The decryption passphrase comes from the OS keychain; store it
 once with set-passphrase.
+
+Examples:
+  mt5-pnl-cli pnl --last 30d
+  mt5-pnl-cli accounts --format json
 `)
 }

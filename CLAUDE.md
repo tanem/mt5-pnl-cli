@@ -25,12 +25,18 @@ pre-commit run --all-files    # run the gitleaks hook manually
   warning, account-label filter resolution.
 - `internal/snapshot` — schema 1.x structs, streaming age→gzip→JSON read,
   version gate (`CheckSchemaVersion`: same major, minor <= supported).
-- `internal/aggregate` — deals → period rows + summary. Full-precision
-  sums; rounding happens in render only. Breakeven (net == 0) is neither
-  win nor loss.
+- `internal/aggregate` — deals → period rows + summary. Each row and the
+  summary carry net P&L plus its four components (trade_profit / commission
+  / swap / fee, summing to net). The summary also carries expectancy,
+  average and largest win/loss, and max drawdown (a deal-ordered
+  realised-P&L pass, not equity drawdown). Full-precision sums; rounding
+  happens in render only. Breakeven (net == 0) is neither win nor loss.
 - `internal/secrets` — keychain via zalando/go-keyring, service
   `mt5-pnl-cli`, account `encryption-passphrase`.
-- `internal/render` — tabwriter tables + JSON; all display rounding here.
+- `internal/render` — fixed-width tables (manual writer; ANSI colour
+  applied after width padding so it never skews alignment), JSON and CSV;
+  all display rounding here. `pnl`/`accounts` take `--format table|json|csv`
+  (default `table`).
 - `internal/snaptest` — test-only fixture builder (encrypts JSON the way
   the exporter does; low scrypt work factor for speed).
 
@@ -48,6 +54,18 @@ pre-commit run --all-files    # run the gitleaks hook manually
   `SupportedMinor`, re-vendor `schema/snapshot.schema.json` from that
   release, and add fields to the structs (additive only).
 - **Deal times are Unix seconds bucketed in UTC**; weeks start Monday.
+- **`--format`.** `pnl`/`accounts` take `--format table|json|csv`
+  (default `table`). CSV is rows-only (no summary).
+- **Mixed-currency guard.** `pnl` never sums across currencies: when
+  accounts in scope span more than one, combined `ALL` rows and the
+  summary are suppressed (`n/a`/`null`/omitted) with a stderr warning.
+- **`--quiet`/`-q`** silences stderr warnings (staleness, mixed-currency); errors still print.
+- **`--color`** (pnl only): auto/always/never; auto needs a `*os.File` TTY and honours `NO_COLOR`/`TERM=dumb`.
+- **Summary block is table/JSON only.** The two-group performance/breakdown
+  summary appears in `--format table` (an aligned key/value block) and
+  `--format json`; CSV is rows-only by design. Max drawdown is realised-P&L
+  drawdown over the ordered in-scope deals, deliberately distinct from
+  broker equity drawdown.
 - Dependencies are Renovate-managed; don't hand-bump pinned actions or
   module versions.
 
