@@ -18,7 +18,7 @@ import (
 
 type Options struct {
 	From, To time.Time      // inclusive civil dates at UTC midnight
-	By       string         // "day", "week" (Monday-start) or "month"
+	By       string         // "day", "week" (Monday-start), "month", "symbol" or "magic"; symbol/magic aggregate across accounts
 	Accounts map[int64]bool // nil = all accounts
 }
 

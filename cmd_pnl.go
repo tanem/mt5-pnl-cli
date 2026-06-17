@@ -44,7 +44,7 @@ func cmdPnL(args []string, stdout, stderr io.Writer, getPassphrase func() (strin
 	last := fs.String("last", "", "relative range: Nd, Nw, Nm or Ny (default 30d)")
 	from := fs.String("from", "", "start date (YYYY-MM-DD)")
 	to := fs.String("to", "", "end date (YYYY-MM-DD); defaults to today")
-	by := fs.String("by", "week", "group results by: day, week or month")
+	by := fs.String("by", "week", "group results by: day, week, month, symbol or magic")
 	accountsSpec := fs.String("accounts", "", "comma-separated account labels (default: all)")
 	formatFlag := fs.String("format", "table", "output format: table, json or csv")
 	colorMode := fs.String("color", "auto", "colour output: auto, always or never")

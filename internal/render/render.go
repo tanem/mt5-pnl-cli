@@ -292,9 +292,12 @@ func money(x float64) string {
 	return strconv.FormatFloat(round(x, 2), 'f', 2, 64)
 }
 
-// PnLCSV writes per-period rows as CSV (header + rows, no summary). Under
-// mixed currency the combined ALL rows are omitted, since they would sum
-// across currencies; per-account rows (each single-currency) still print.
+// PnLCSV writes rows as CSV (header + data rows, no summary). groupBy is
+// written into every row's group_by column (e.g. "week", "symbol",
+// "magic"). For dimension cuts (symbol/magic) both account columns are
+// empty. Under mixed currency the combined ALL rows for time cuts are
+// omitted, since they would sum across currencies; per-account rows (each
+// single-currency) still print.
 func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, groupBy string, mixed bool) error {
 	dimension := groupBy == "symbol" || groupBy == "magic"
 	cw := csv.NewWriter(w)
