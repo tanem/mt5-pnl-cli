@@ -55,7 +55,7 @@ func writeTable(w io.Writer, cols []colSpec, rows [][]cell, color bool) error {
 			}
 			text, tn := get(i)
 			last := i == len(cols)-1
-			if !(last && !cols[i].right) {
+			if !last || cols[i].right {
 				text = pad(text, widths[i], cols[i].right)
 			}
 			b.WriteString(colorise(text, tn, color))
