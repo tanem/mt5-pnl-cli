@@ -55,13 +55,49 @@ func signTone(x float64) tone {
 	}
 }
 
-func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, mixed bool, opts TableOpts) error {
-	cols := []colSpec{
-		{"PERIOD", false}, {"ACCOUNT", false}, {"P&L", true},
-		{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+// groupHeader is the first table column header for a pnl cut.
+func groupHeader(groupBy string) string {
+	switch groupBy {
+	case "symbol":
+		return "SYMBOL"
+	case "magic":
+		return "MAGIC"
+	default:
+		return "PERIOD"
+	}
+}
+
+func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, groupBy string, mixed bool, opts TableOpts) error {
+	dimension := groupBy == "symbol" || groupBy == "magic"
+	var cols []colSpec
+	if dimension {
+		cols = []colSpec{
+			{groupHeader(groupBy), false}, {"P&L", true},
+			{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+		}
+	} else {
+		cols = []colSpec{
+			{"PERIOD", false}, {"ACCOUNT", false}, {"P&L", true},
+			{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+		}
 	}
 	body := make([][]cell, 0, len(rows))
 	for _, r := range rows {
+		pnlText := fmt.Sprintf("%.2f", r.PnL)
+		// Tone from the displayed (rounded) value so a cell that reads 0.00
+		// is treated as breakeven (no colour), matching the win/loss rule.
+		pnlTone := signTone(round(r.PnL, 2))
+		if dimension {
+			// symbol/magic: no account column, and no combined/mixed case
+			// (the command refuses a dimension cut under mixed currency).
+			body = append(body, []cell{
+				{r.Group, toneNone}, {pnlText, pnlTone},
+				{strconv.Itoa(r.Trades), toneNone},
+				{strconv.Itoa(r.Wins), toneNone},
+				{strconv.Itoa(r.Losses), toneNone},
+			})
+			continue
+		}
 		acct := "ALL"
 		combined := r.Account == nil
 		if !combined {
@@ -70,10 +106,6 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 				acct = strconv.FormatInt(*r.Account, 10)
 			}
 		}
-		pnlText := fmt.Sprintf("%.2f", r.PnL)
-		// Tone from the displayed (rounded) value so a cell that reads 0.00
-		// is treated as breakeven (no colour), matching the win/loss rule.
-		pnlTone := signTone(round(r.PnL, 2))
 		if mixed && combined {
 			pnlText, pnlTone = "n/a", toneNone
 		}

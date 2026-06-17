@@ -1,0 +1,23 @@
+SYMBOL    P&L  TRADES  WINS  LOSSES
+EURUSD   5.00       2     1       1
+XAUUSD  10.00       1     1       0
+
+Summary
+  Performance
+    Trades         3
+    Win rate       66.7%
+    Profit factor  4.75
+    Expectancy     5.00
+    Avg win        9.50
+    Avg loss       -4.00
+    Largest win    10.00
+    Largest loss   -4.00
+    Max drawdown   0.00
+    Gross profit   19.00
+    Gross loss     -4.00
+  P&L breakdown
+    Trade profit   15.00
+    Commission     0.00
+    Swap           0.00
+    Fee            0.00
+    Net P&L        15.00

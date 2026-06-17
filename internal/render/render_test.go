@@ -52,7 +52,7 @@ func checkGolden(t *testing.T, name string, got []byte) {
 
 func TestPnLTable(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{}); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, "week", false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -66,7 +66,7 @@ func TestPnLTable(t *testing.T) {
 
 func TestPnLTableUnknownLabelFallsBackToLogin(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, nil, false, render.TableOpts{}); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, nil, "week", false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("111")) {
@@ -76,7 +76,7 @@ func TestPnLTableUnknownLabelFallsBackToLogin(t *testing.T) {
 
 func TestPnLTableNilSummaryFields(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, nil, aggregate.Summary{}, nil, false, render.TableOpts{}); err != nil {
+	if err := render.PnLTable(&buf, nil, aggregate.Summary{}, nil, "week", false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("n/a")) {
@@ -266,7 +266,7 @@ func TestPnLJSONMixedNulls(t *testing.T) {
 
 func TestPnLTableMixedNA(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels, true, render.TableOpts{}); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, "week", true, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
@@ -283,7 +283,7 @@ func TestPnLTableMixedNA(t *testing.T) {
 
 func TestPnLTableCurrencyFooter(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{Currency: "USD"}); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, "week", false, render.TableOpts{Currency: "USD"}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "Net P&L        5.00 USD") {
@@ -293,7 +293,7 @@ func TestPnLTableCurrencyFooter(t *testing.T) {
 
 func TestPnLTableNoCurrencyWhenUnset(t *testing.T) {
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, rows, sum, labels, false, render.TableOpts{}); err != nil {
+	if err := render.PnLTable(&buf, rows, sum, labels, "week", false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(buf.String(), "USD") {
@@ -307,10 +307,10 @@ func TestPnLTableColorBySign(t *testing.T) {
 		{Group: "2026-01-12", Account: ptr(int64(111)), PnL: -3.0, Trades: 1, Losses: 1},
 	}
 	var on, off bytes.Buffer
-	if err := render.PnLTable(&on, signed, sum, labels, false, render.TableOpts{Color: true}); err != nil {
+	if err := render.PnLTable(&on, signed, sum, labels, "week", false, render.TableOpts{Color: true}); err != nil {
 		t.Fatal(err)
 	}
-	if err := render.PnLTable(&off, signed, sum, labels, false, render.TableOpts{}); err != nil {
+	if err := render.PnLTable(&off, signed, sum, labels, "week", false, render.TableOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(on.String(), "\x1b[32m") || !strings.Contains(on.String(), "\x1b[31m") {
@@ -326,10 +326,49 @@ func TestPnLTableBreakevenNotColoured(t *testing.T) {
 	// tinted even with colour enabled (tone follows the displayed value).
 	be := []aggregate.Row{{Group: "2026-01-05", Account: ptr(int64(111)), PnL: 0.004, Trades: 1}}
 	var buf bytes.Buffer
-	if err := render.PnLTable(&buf, be, aggregate.Summary{}, labels, false, render.TableOpts{Color: true}); err != nil {
+	if err := render.PnLTable(&buf, be, aggregate.Summary{}, labels, "week", false, render.TableOpts{Color: true}); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(buf.String(), "\x1b[") {
 		t.Errorf("breakeven (displayed 0.00) must not be coloured:\n%q", buf.String())
 	}
+}
+
+func TestPnLTableBySymbolDropsAccountColumn(t *testing.T) {
+	var buf bytes.Buffer
+	symRows := []aggregate.Row{
+		{Group: "EURUSD", Account: nil, PnL: 5.0, Trades: 2, Wins: 1, Losses: 1},
+		{Group: "XAUUSD", Account: nil, PnL: 10.0, Trades: 1, Wins: 1, Losses: 0},
+	}
+	if err := render.PnLTable(&buf, symRows, aggregate.Summary{}, map[int64]string{}, "symbol", false, render.TableOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{"SYMBOL", "EURUSD", "XAUUSD", "Summary", "Net P&L"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("symbol table missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "ACCOUNT") {
+		t.Errorf("symbol table should not have an ACCOUNT column:\n%s", out)
+	}
+}
+
+func TestPnLTableBySymbolGolden(t *testing.T) {
+	var buf bytes.Buffer
+	symRows := []aggregate.Row{
+		{Group: "EURUSD", Account: nil, PnL: 5.0, TradeProfit: 5.0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Group: "XAUUSD", Account: nil, PnL: 10.0, TradeProfit: 10.0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 10.0, GrossLoss: 0},
+	}
+	symSum := aggregate.Summary{
+		TotalPnL: 15.0, TotalTrades: 3,
+		WinRatePct: ptr(66.7), ProfitFactor: ptr(4.75),
+		Expectancy: ptr(5.0), AvgWin: ptr(9.5), AvgLoss: ptr(-4.0),
+		LargestWin: ptr(10.0), LargestLoss: ptr(-4.0), MaxDrawdown: ptr(0.0),
+		GrossProfit: 19.0, GrossLoss: -4.0, TradeProfit: 15.0,
+	}
+	if err := render.PnLTable(&buf, symRows, symSum, map[int64]string{}, "symbol", false, render.TableOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	checkGolden(t, "pnl_table_symbol.golden", buf.Bytes())
 }
