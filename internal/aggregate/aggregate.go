@@ -21,10 +21,12 @@ type Options struct {
 	Accounts map[int64]bool // nil = all accounts
 }
 
-// Row is one period × account bucket. Account == nil is the combined row
-// across all accounts for that period.
+// Row is one group × account bucket. Group holds the period date (time
+// cuts) or the symbol/magic key (dimension cuts). Account == nil is the
+// combined row across all accounts for a time period, and is also nil for
+// every symbol/magic row (those have no per-account dimension).
 type Row struct {
-	Period      string
+	Group       string
 	Account     *int64
 	PnL         float64
 	TradeProfit float64
@@ -84,7 +86,7 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 		b := buckets[k]
 		if b == nil {
 			acct := d.Account
-			b = &Row{Period: k.period, Account: &acct}
+			b = &Row{Group: k.period, Account: &acct}
 			buckets[k] = b
 		}
 		net := d.Profit + d.Swap + d.Commission + d.Fee
@@ -133,7 +135,7 @@ func Aggregate(deals []snapshot.Deal, opts Options) ([]Row, Summary) {
 	var sum Summary
 	totalWins, totalLosses := 0, 0
 	for _, p := range periods {
-		combined := Row{Period: p}
+		combined := Row{Group: p}
 		for _, a := range accounts {
 			b, ok := buckets[key{p, a}]
 			if !ok {

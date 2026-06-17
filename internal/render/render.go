@@ -78,7 +78,7 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 			pnlText, pnlTone = "n/a", toneNone
 		}
 		body = append(body, []cell{
-			{r.Period, toneNone}, {acct, toneNone}, {pnlText, pnlTone},
+			{r.Group, toneNone}, {acct, toneNone}, {pnlText, pnlTone},
 			{strconv.Itoa(r.Trades), toneNone},
 			{strconv.Itoa(r.Wins), toneNone},
 			{strconv.Itoa(r.Losses), toneNone},
@@ -175,7 +175,7 @@ func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, mixed boo
 	}{Rows: make([]pnlRow, 0, len(rows))}
 	for _, r := range rows {
 		row := pnlRow{
-			Period: r.Period, Account: r.Account,
+			Period: r.Group, Account: r.Account,
 			PnL:         numPtr(round(r.PnL, 2)),
 			TradeProfit: numPtr(round(r.TradeProfit, 2)),
 			Commission:  numPtr(round(r.Commission, 2)),
@@ -285,7 +285,7 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 			}
 		}
 		if err := cw.Write([]string{
-			r.Period, login, label,
+			r.Group, login, label,
 			money(r.PnL), money(r.TradeProfit), money(r.Commission), money(r.Swap), money(r.Fee),
 			strconv.Itoa(r.Trades), strconv.Itoa(r.Wins), strconv.Itoa(r.Losses),
 			money(r.GrossProfit), money(r.GrossLoss),

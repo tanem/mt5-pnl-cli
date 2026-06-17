@@ -18,8 +18,8 @@ var update = flag.Bool("update", false, "rewrite golden files")
 func ptr[T any](v T) *T { return &v }
 
 var rows = []aggregate.Row{
-	{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.004, TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
-	{Period: "2026-01-05", Account: nil, PnL: 5.004, TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
+	{Group: "2026-01-05", Account: ptr(int64(111)), PnL: 5.004, TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
+	{Group: "2026-01-05", Account: nil, PnL: 5.004, TradeProfit: 6.0, Commission: -0.5, Swap: -0.496, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -3.996},
 }
 
 var sum = aggregate.Summary{
@@ -284,8 +284,8 @@ func TestPnLTableNoCurrencyWhenUnset(t *testing.T) {
 
 func TestPnLTableColorBySign(t *testing.T) {
 	signed := []aggregate.Row{
-		{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, Trades: 1, Wins: 1},
-		{Period: "2026-01-12", Account: ptr(int64(111)), PnL: -3.0, Trades: 1, Losses: 1},
+		{Group: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, Trades: 1, Wins: 1},
+		{Group: "2026-01-12", Account: ptr(int64(111)), PnL: -3.0, Trades: 1, Losses: 1},
 	}
 	var on, off bytes.Buffer
 	if err := render.PnLTable(&on, signed, sum, labels, false, render.TableOpts{Color: true}); err != nil {
@@ -305,7 +305,7 @@ func TestPnLTableColorBySign(t *testing.T) {
 func TestPnLTableBreakevenNotColoured(t *testing.T) {
 	// 0.004 rounds to 0.00 on display, so it is breakeven and must not be
 	// tinted even with colour enabled (tone follows the displayed value).
-	be := []aggregate.Row{{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 0.004, Trades: 1}}
+	be := []aggregate.Row{{Group: "2026-01-05", Account: ptr(int64(111)), PnL: 0.004, Trades: 1}}
 	var buf bytes.Buffer
 	if err := render.PnLTable(&buf, be, aggregate.Summary{}, labels, false, render.TableOpts{Color: true}); err != nil {
 		t.Fatal(err)

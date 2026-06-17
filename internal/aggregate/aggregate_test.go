@@ -37,11 +37,11 @@ func TestAggregateByWeek(t *testing.T) {
 		From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week",
 	})
 	want := []aggregate.Row{
-		{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 6.0, Commission: -0.5, Swap: -0.5, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
-		{Period: "2026-01-05", Account: ptr(int64(222)), PnL: 0.0, TradeProfit: 0.5, Commission: -0.5, Swap: 0, Fee: 0, Trades: 1, Wins: 0, Losses: 0, GrossProfit: 0, GrossLoss: 0},
-		{Period: "2026-01-05", Account: nil, PnL: 5.0, TradeProfit: 6.5, Commission: -1.0, Swap: -0.5, Fee: 0, Trades: 3, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
-		{Period: "2026-01-12", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
-		{Period: "2026-01-12", Account: nil, PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
+		{Group: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 6.0, Commission: -0.5, Swap: -0.5, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Group: "2026-01-05", Account: ptr(int64(222)), PnL: 0.0, TradeProfit: 0.5, Commission: -0.5, Swap: 0, Fee: 0, Trades: 1, Wins: 0, Losses: 0, GrossProfit: 0, GrossLoss: 0},
+		{Group: "2026-01-05", Account: nil, PnL: 5.0, TradeProfit: 6.5, Commission: -1.0, Swap: -0.5, Fee: 0, Trades: 3, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Group: "2026-01-12", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
+		{Group: "2026-01-12", Account: nil, PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
 	}
 	if !reflect.DeepEqual(rows, want) {
 		t.Errorf("rows:\n got %+v\nwant %+v", rows, want)
@@ -64,8 +64,8 @@ func TestAggregateByDayWithDateFilter(t *testing.T) {
 	if len(rows) != 3 { // acct 111, acct 222, combined
 		t.Fatalf("got %d rows, want 3: %+v", len(rows), rows)
 	}
-	if rows[0].Period != "2026-01-06" {
-		t.Errorf("period = %q, want 2026-01-06", rows[0].Period)
+	if rows[0].Group != "2026-01-06" {
+		t.Errorf("period = %q, want 2026-01-06", rows[0].Group)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestAggregateByMonth(t *testing.T) {
 	})
 	periods := map[string]bool{}
 	for _, r := range rows {
-		periods[r.Period] = true
+		periods[r.Group] = true
 	}
 	if !periods["2026-01-01"] || !periods["2026-02-01"] || len(periods) != 2 {
 		t.Errorf("periods = %v, want 2026-01-01 and 2026-02-01", periods)
@@ -87,8 +87,8 @@ func TestWeekBoundary(t *testing.T) {
 	// Sunday 23:59:59 belongs to the week starting the previous Monday.
 	rows, _ := aggregate.Aggregate([]snapshot.Deal{deal(111, 1768175999, 1.0, 0, 0, 0)},
 		aggregate.Options{From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week"})
-	if rows[0].Period != "2026-01-05" {
-		t.Errorf("period = %q, want 2026-01-05", rows[0].Period)
+	if rows[0].Group != "2026-01-05" {
+		t.Errorf("period = %q, want 2026-01-05", rows[0].Group)
 	}
 }
 
