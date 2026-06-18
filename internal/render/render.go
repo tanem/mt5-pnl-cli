@@ -55,13 +55,49 @@ func signTone(x float64) tone {
 	}
 }
 
-func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, mixed bool, opts TableOpts) error {
-	cols := []colSpec{
-		{"PERIOD", false}, {"ACCOUNT", false}, {"P&L", true},
-		{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+// groupHeader is the first table column header for a pnl cut.
+func groupHeader(groupBy string) string {
+	switch groupBy {
+	case "symbol":
+		return "SYMBOL"
+	case "magic":
+		return "MAGIC"
+	default:
+		return "PERIOD"
+	}
+}
+
+func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels map[int64]string, groupBy string, mixed bool, opts TableOpts) error {
+	dimension := groupBy == "symbol" || groupBy == "magic"
+	var cols []colSpec
+	if dimension {
+		cols = []colSpec{
+			{groupHeader(groupBy), false}, {"P&L", true},
+			{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+		}
+	} else {
+		cols = []colSpec{
+			{"PERIOD", false}, {"ACCOUNT", false}, {"P&L", true},
+			{"TRADES", true}, {"WINS", true}, {"LOSSES", true},
+		}
 	}
 	body := make([][]cell, 0, len(rows))
 	for _, r := range rows {
+		pnlText := fmt.Sprintf("%.2f", r.PnL)
+		// Tone from the displayed (rounded) value so a cell that reads 0.00
+		// is treated as breakeven (no colour), matching the win/loss rule.
+		pnlTone := signTone(round(r.PnL, 2))
+		if dimension {
+			// symbol/magic: no account column, and no combined/mixed case
+			// (the command refuses a dimension cut under mixed currency).
+			body = append(body, []cell{
+				{r.Group, toneNone}, {pnlText, pnlTone},
+				{strconv.Itoa(r.Trades), toneNone},
+				{strconv.Itoa(r.Wins), toneNone},
+				{strconv.Itoa(r.Losses), toneNone},
+			})
+			continue
+		}
 		acct := "ALL"
 		combined := r.Account == nil
 		if !combined {
@@ -70,15 +106,11 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 				acct = strconv.FormatInt(*r.Account, 10)
 			}
 		}
-		pnlText := fmt.Sprintf("%.2f", r.PnL)
-		// Tone from the displayed (rounded) value so a cell that reads 0.00
-		// is treated as breakeven (no colour), matching the win/loss rule.
-		pnlTone := signTone(round(r.PnL, 2))
 		if mixed && combined {
 			pnlText, pnlTone = "n/a", toneNone
 		}
 		body = append(body, []cell{
-			{r.Period, toneNone}, {acct, toneNone}, {pnlText, pnlTone},
+			{r.Group, toneNone}, {acct, toneNone}, {pnlText, pnlTone},
 			{strconv.Itoa(r.Trades), toneNone},
 			{strconv.Itoa(r.Wins), toneNone},
 			{strconv.Itoa(r.Losses), toneNone},
@@ -131,7 +163,8 @@ func PnLTable(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, labels m
 }
 
 type pnlRow struct {
-	Period      string   `json:"period"`
+	Group       string   `json:"group"`
+	GroupBy     string   `json:"group_by"`
 	Account     *int64   `json:"account"`
 	PnL         *float64 `json:"pnl"`
 	TradeProfit *float64 `json:"trade_profit"`
@@ -168,14 +201,14 @@ type pnlSummary struct {
 // combined (account == nil) rows and the summary have their currency-valued
 // fields set to null (they would sum across currencies); counts and the
 // count-based win rate are kept.
-func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, mixed bool) error {
+func PnLJSON(w io.Writer, rows []aggregate.Row, sum aggregate.Summary, groupBy string, mixed bool) error {
 	out := struct {
 		Rows    []pnlRow   `json:"rows"`
 		Summary pnlSummary `json:"summary"`
 	}{Rows: make([]pnlRow, 0, len(rows))}
 	for _, r := range rows {
 		row := pnlRow{
-			Period: r.Period, Account: r.Account,
+			Group: r.Group, GroupBy: groupBy, Account: r.Account,
 			PnL:         numPtr(round(r.PnL, 2)),
 			TradeProfit: numPtr(round(r.TradeProfit, 2)),
 			Commission:  numPtr(round(r.Commission, 2)),
@@ -259,13 +292,17 @@ func money(x float64) string {
 	return strconv.FormatFloat(round(x, 2), 'f', 2, 64)
 }
 
-// PnLCSV writes per-period rows as CSV (header + rows, no summary). Under
-// mixed currency the combined ALL rows are omitted, since they would sum
-// across currencies; per-account rows (each single-currency) still print.
-func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bool) error {
+// PnLCSV writes rows as CSV (header + data rows, no summary). groupBy is
+// written into every row's group_by column (e.g. "week", "symbol",
+// "magic"). For dimension cuts (symbol/magic) both account columns are
+// empty. Under mixed currency the combined ALL rows for time cuts are
+// omitted, since they would sum across currencies; per-account rows (each
+// single-currency) still print.
+func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, groupBy string, mixed bool) error {
+	dimension := groupBy == "symbol" || groupBy == "magic"
 	cw := csv.NewWriter(w)
 	if err := cw.Write([]string{
-		"period", "account_login", "account_label",
+		"group", "group_by", "account_login", "account_label",
 		"pnl", "trade_profit", "commission", "swap", "fee",
 		"trades", "wins", "losses", "gross_profit", "gross_loss",
 	}); err != nil {
@@ -273,11 +310,16 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 	}
 	for _, r := range rows {
 		combined := r.Account == nil
-		if mixed && combined {
+		if mixed && combined && !dimension {
 			continue
 		}
-		login, label := "", "ALL"
-		if !combined {
+		login, label := "", ""
+		switch {
+		case dimension:
+			// symbol/magic rows have no account dimension: both columns empty.
+		case combined:
+			label = "ALL"
+		default:
 			login = strconv.FormatInt(*r.Account, 10)
 			label = labels[*r.Account]
 			if label == "" {
@@ -285,7 +327,7 @@ func PnLCSV(w io.Writer, rows []aggregate.Row, labels map[int64]string, mixed bo
 			}
 		}
 		if err := cw.Write([]string{
-			r.Period, login, label,
+			r.Group, groupBy, login, label,
 			money(r.PnL), money(r.TradeProfit), money(r.Commission), money(r.Swap), money(r.Fee),
 			strconv.Itoa(r.Trades), strconv.Itoa(r.Wins), strconv.Itoa(r.Losses),
 			money(r.GrossProfit), money(r.GrossLoss),

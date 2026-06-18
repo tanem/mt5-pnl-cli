@@ -37,11 +37,11 @@ func TestAggregateByWeek(t *testing.T) {
 		From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week",
 	})
 	want := []aggregate.Row{
-		{Period: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 6.0, Commission: -0.5, Swap: -0.5, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
-		{Period: "2026-01-05", Account: ptr(int64(222)), PnL: 0.0, TradeProfit: 0.5, Commission: -0.5, Swap: 0, Fee: 0, Trades: 1, Wins: 0, Losses: 0, GrossProfit: 0, GrossLoss: 0},
-		{Period: "2026-01-05", Account: nil, PnL: 5.0, TradeProfit: 6.5, Commission: -1.0, Swap: -0.5, Fee: 0, Trades: 3, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
-		{Period: "2026-01-12", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
-		{Period: "2026-01-12", Account: nil, PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
+		{Group: "2026-01-05", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 6.0, Commission: -0.5, Swap: -0.5, Fee: 0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Group: "2026-01-05", Account: ptr(int64(222)), PnL: 0.0, TradeProfit: 0.5, Commission: -0.5, Swap: 0, Fee: 0, Trades: 1, Wins: 0, Losses: 0, GrossProfit: 0, GrossLoss: 0},
+		{Group: "2026-01-05", Account: nil, PnL: 5.0, TradeProfit: 6.5, Commission: -1.0, Swap: -0.5, Fee: 0, Trades: 3, Wins: 1, Losses: 1, GrossProfit: 9.0, GrossLoss: -4.0},
+		{Group: "2026-01-12", Account: ptr(int64(111)), PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
+		{Group: "2026-01-12", Account: nil, PnL: 5.0, TradeProfit: 5.0, Commission: 0, Swap: 0, Fee: 0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 5.0, GrossLoss: 0},
 	}
 	if !reflect.DeepEqual(rows, want) {
 		t.Errorf("rows:\n got %+v\nwant %+v", rows, want)
@@ -64,8 +64,8 @@ func TestAggregateByDayWithDateFilter(t *testing.T) {
 	if len(rows) != 3 { // acct 111, acct 222, combined
 		t.Fatalf("got %d rows, want 3: %+v", len(rows), rows)
 	}
-	if rows[0].Period != "2026-01-06" {
-		t.Errorf("period = %q, want 2026-01-06", rows[0].Period)
+	if rows[0].Group != "2026-01-06" {
+		t.Errorf("period = %q, want 2026-01-06", rows[0].Group)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestAggregateByMonth(t *testing.T) {
 	})
 	periods := map[string]bool{}
 	for _, r := range rows {
-		periods[r.Period] = true
+		periods[r.Group] = true
 	}
 	if !periods["2026-01-01"] || !periods["2026-02-01"] || len(periods) != 2 {
 		t.Errorf("periods = %v, want 2026-01-01 and 2026-02-01", periods)
@@ -87,8 +87,8 @@ func TestWeekBoundary(t *testing.T) {
 	// Sunday 23:59:59 belongs to the week starting the previous Monday.
 	rows, _ := aggregate.Aggregate([]snapshot.Deal{deal(111, 1768175999, 1.0, 0, 0, 0)},
 		aggregate.Options{From: date(2026, 1, 1), To: date(2026, 1, 31), By: "week"})
-	if rows[0].Period != "2026-01-05" {
-		t.Errorf("period = %q, want 2026-01-05", rows[0].Period)
+	if rows[0].Group != "2026-01-05" {
+		t.Errorf("period = %q, want 2026-01-05", rows[0].Group)
 	}
 }
 
@@ -205,5 +205,66 @@ func TestMaxDrawdownTiesBrokenByTimeMsc(t *testing.T) {
 	_, sum := aggregate.Aggregate(ds, ddOpts)
 	if sum.MaxDrawdown == nil || *sum.MaxDrawdown != -7.0 {
 		t.Errorf("max drawdown = %v, want -7.0", sum.MaxDrawdown)
+	}
+}
+
+// symDeal builds a deal with a symbol and magic set, time fixed inside the
+// standard Jan-2026 test range.
+func symDeal(account int64, symbol string, magic int64, profit float64) snapshot.Deal {
+	return snapshot.Deal{Account: account, Time: 1767607200, Symbol: symbol, Magic: magic, Profit: profit}
+}
+
+func TestAggregateBySymbol(t *testing.T) {
+	ds := []snapshot.Deal{
+		symDeal(111, "XAUUSD", 0, 10.0),
+		symDeal(111, "EURUSD", 0, 4.0),
+		symDeal(222, "EURUSD", 0, -1.0), // same symbol, different account -> same row
+	}
+	rows, sum := aggregate.Aggregate(ds, aggregate.Options{
+		From: date(2026, 1, 1), To: date(2026, 1, 31), By: "symbol",
+	})
+	want := []aggregate.Row{
+		{Group: "EURUSD", Account: nil, PnL: 3.0, TradeProfit: 3.0, Trades: 2, Wins: 1, Losses: 1, GrossProfit: 4.0, GrossLoss: -1.0},
+		{Group: "XAUUSD", Account: nil, PnL: 10.0, TradeProfit: 10.0, Trades: 1, Wins: 1, Losses: 0, GrossProfit: 10.0, GrossLoss: 0},
+	}
+	if !reflect.DeepEqual(rows, want) {
+		t.Errorf("rows:\n got %+v\nwant %+v", rows, want)
+	}
+	if sum.TotalPnL != 13.0 || sum.TotalTrades != 3 || sum.GrossProfit != 14.0 || sum.GrossLoss != -1.0 {
+		t.Errorf("summary totals wrong: %+v", sum)
+	}
+}
+
+func TestAggregateByMagicSortsNumerically(t *testing.T) {
+	// Numeric order is 20 before 100; a lexical sort of the stringified keys
+	// would wrongly put "100" before "20".
+	ds := []snapshot.Deal{
+		symDeal(111, "EURUSD", 100, 5.0),
+		symDeal(111, "EURUSD", 20, 2.0),
+	}
+	rows, _ := aggregate.Aggregate(ds, aggregate.Options{
+		From: date(2026, 1, 1), To: date(2026, 1, 31), By: "magic",
+	})
+	if len(rows) != 2 {
+		t.Fatalf("want 2 rows, got %d: %+v", len(rows), rows)
+	}
+	if rows[0].Group != "20" || rows[1].Group != "100" {
+		t.Errorf("magic order = [%q %q], want [\"20\" \"100\"]", rows[0].Group, rows[1].Group)
+	}
+	if rows[0].Account != nil || rows[1].Account != nil {
+		t.Errorf("magic rows must have nil Account, got %+v", rows)
+	}
+}
+
+func TestAccountsInScope(t *testing.T) {
+	ds := []snapshot.Deal{
+		symDeal(111, "EURUSD", 0, 1.0),
+		symDeal(222, "EURUSD", 0, 1.0),
+		{Account: 333, Time: 1700000000, Symbol: "EURUSD", Profit: 1.0}, // out of range
+	}
+	got := aggregate.AccountsInScope(ds, aggregate.Options{From: date(2026, 1, 1), To: date(2026, 1, 31)})
+	want := []int64{111, 222}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AccountsInScope = %v, want %v", got, want)
 	}
 }

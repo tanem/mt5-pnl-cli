@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tanem/mt5-pnl-cli/internal/aggregate"
 	"github.com/tanem/mt5-pnl-cli/internal/snapshot"
 	"golang.org/x/term"
 )
@@ -91,9 +90,10 @@ func loadSnapshot(pathFlag string, staleAfter time.Duration, warnW io.Writer, ge
 
 // currenciesInScope returns the distinct account currencies in scope, sorted.
 // When an explicit --accounts filter is given, scope is those accounts;
-// otherwise it is the accounts that actually contributed rows. More than one
-// currency means combined totals would sum across currencies.
-func currenciesInScope(accounts []snapshot.AccountSnapshot, filter map[int64]bool, rows []aggregate.Row) []string {
+// otherwise it is the accounts that actually contributed deals (passed via
+// `contributing`). More than one currency means combined totals would sum
+// across currencies.
+func currenciesInScope(accounts []snapshot.AccountSnapshot, filter map[int64]bool, contributing []int64) []string {
 	curBy := make(map[int64]string, len(accounts))
 	for _, a := range accounts {
 		curBy[a.Login] = a.Currency
@@ -106,11 +106,9 @@ func currenciesInScope(accounts []snapshot.AccountSnapshot, filter map[int64]boo
 			}
 		}
 	} else {
-		for _, r := range rows {
-			if r.Account != nil {
-				if c := curBy[*r.Account]; c != "" {
-					set[c] = true
-				}
+		for _, login := range contributing {
+			if c := curBy[login]; c != "" {
+				set[c] = true
 			}
 		}
 	}
