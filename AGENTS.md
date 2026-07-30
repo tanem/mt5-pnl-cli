@@ -40,8 +40,7 @@ pre-commit run --all-files    # run the gitleaks hook manually
   `mt5-pnl-cli`, account `encryption-passphrase`.
 - `internal/render` — fixed-width tables (manual writer; ANSI colour
   applied after width padding so it never skews alignment), JSON and CSV;
-  all display rounding here. `pnl`/`accounts` take `--format table|json|csv`
-  (default `table`).
+  all display rounding here.
 - `internal/snaptest` — test-only fixture builder (encrypts JSON the way
   the exporter does; low scrypt work factor for speed).
 
